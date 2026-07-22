@@ -118,7 +118,7 @@ O robô possui uma configuração não holonômica, cinematicamente equivalente 
 
 ## Instalar o ROS 2 Jazzy
 
-Siga as instruções oficiais de instalação para Ubuntu:
+Siga as instruções oficiais de instalação para Ubuntu (Tenha a certeza de instalar os pacotes de desenvolvedor):
 
 https://docs.ros.org/en/jazzy/Installation/Ubuntu-Install-Debs.html
 
@@ -150,6 +150,13 @@ Após compilar:
 
 ```bash
 source install/setup.bash
+```
+
+## Configurar o Blueooth
+
+Para associar a porta rfcomm ao endereço mac do robô (Apenas se o robô ainda for o mesmo, caso não, altere esse passo):
+```bash
+sudo rfcomm bind /dev/rfcomm0 00:23:09:01:36:17
 ```
 
 ## Executando os Nós
@@ -188,6 +195,13 @@ ros2 run transmission_node transmission_node
 
 
 Ou utilize os Launchers:
+
+Primeiro instale o xterm:
+```bash
+sudo apt install xterm
+```
+
+Depois rode os launchers: 
 
 Para calibração:
 ```bash
