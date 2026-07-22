@@ -1,8 +1,9 @@
 /log
 /install
 /build
+/node_modules
 
-# Ambientes virtuais, caches Python e dependências Node
+# Ambientes virtuais e caches Python
 venv/
 __pycache__/
 *.pyc
