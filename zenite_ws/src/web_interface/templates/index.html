@@ -1,39 +1,48 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zênite — Interface Web</title>
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  <link rel="stylesheet" href="../static/style.css">
 </head>
+
 <body>
-  <header>
-    <h1>🛰️ Zênite — Interface Web</h1>
-    <div class="badges">
-      <span id="conn-badge" class="badge off">Desconectado</span>
-      <span id="homog-badge" class="badge off">Sem calibração</span>
-    </div>
-  </header>
-
   <main>
-    <section class="video-panel">
-      <div class="canvas-wrap">
-        <canvas id="video-canvas" width="640" height="480"></canvas>
-        <div id="no-video" class="no-video">Aguardando imagem da câmera…</div>
+    <section class="video-section">
+      <div>
+        <canvas id="video-canvas"></canvas>
       </div>
-      <p class="hint">Clique na imagem para enviar o robô até o ponto desejado.</p>
+      <div class="badges">
+        <span id="conn-badge" class="error">Desconectado</span>
+        <span id="cam-badge" class="error">Câmera desconectada</span>
+        <span id="homog-badge" class="error">Sem calibração</span>
+        <span id="loc-badge" class="error">robô não localizado</span>
+      </div>
+      <div class="console">
+        <h2>Console</h2>
+        <code id="log" class="log">
+        </code>
+      </div>
     </section>
+    <section>
+      <nav>
+        <button class="selected">Calibragem</button>
+        <button class="">Câmera</button>
+        <button class="">Telemetria</button>
+      </nav>
 
-    <aside class="side-panel">
-      <section class="card">
+      <div class="card">
         <h2>Telemetria</h2>
         <div class="telemetry">
           <div><span class="label">Posição atual</span><span id="pose-value">—</span></div>
           <div><span class="label">Último alvo</span><span id="goal-value">—</span></div>
         </div>
-      </section>
+      </div>
 
-      <section class="card">
+      <div class="card">
         <h2>Ajustes da câmera</h2>
         <div class="slider-row">
           <label for="brightness">Brilho</label>
@@ -50,21 +59,19 @@
           <input type="range" id="hue" min="0" max="255" value="255">
           <span id="hue-value">255</span>
         </div>
-      </section>
+      </div>
 
-      <section class="card">
+      <div class="card">
         <h2>Calibração</h2>
         <p class="small">A homografia é gerada pelo <code>calibration_node</code> (scale.yaml).</p>
         <button id="reload-homography">Recarregar homografia</button>
-      </section>
+      </div>
 
-      <section class="card">
-        <h2>Mensagens</h2>
-        <ul id="log" class="log"></ul>
-      </section>
-    </aside>
+
+    </section>
   </main>
 
   <script src="{{ url_for('static', path='app.js') }}"></script>
 </body>
+
 </html>
