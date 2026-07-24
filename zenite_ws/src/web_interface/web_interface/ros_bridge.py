@@ -27,11 +27,20 @@ from .pixel_converter import PixelConverter
 
 
 class RosBridgeNode(Node):
+
+    # Mesma arena hardcoded do calibration_node (C++): 2,75 x 2,25 m.
+    # Ordem esperada dos cliques: (0,0) -> (2.75,0) -> (2.75,2.25) -> (0,2.25).
+    CALIBRATION_WORLD_POINTS = [
+        (0.0, 0.0), (2.75, 0.0), (2.75, 2.25), (0.0, 2.25),
+    ]
+
+
     def __init__(self):
         super().__init__('web_interface_node')
 
         self.scale_yaml_path = self.declare_parameter(
             'scale_yaml_path', '/tmp/scale.yaml').value
+        
         self.jpeg_quality = int(self.declare_parameter('jpeg_quality', 70).value)
         self.host = self.declare_parameter('host', '0.0.0.0').value
         self.port = int(self.declare_parameter('port', 8000).value)
@@ -168,3 +177,18 @@ class RosBridgeNode(Node):
         msg.saturation = float(np.clip(saturation, 0.0, 1.0))
         msg.hue = float(np.clip(hue, 0.0, 1.0))
         self._params_pub.publish(msg)
+
+    def calibrate(self, pixel_points) -> None:
+        """Calibra a homografia a partir de 4 pontos clicados na imagem.
+
+        Equivalente ao calibration_node (C++): assume a mesma arena de
+        2,75 x 2,25 m e a mesma ordem de cliques nos cantos.
+        """
+        if len(pixel_points) != 4:
+            raise ValueError('É necessário enviar exatamente 4 pontos')
+
+        self.converter.set_reference_points(pixel_points, self.CALIBRATION_WORLD_POINTS)
+        self.converter.save_to_yaml(self.scale_yaml_path)
+
+        self.get_logger().info(
+            f'Calibração concluída via interface web. Homografia salva em {self.scale_yaml_path}')

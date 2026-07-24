@@ -87,6 +87,14 @@ def create_app(bridge: RosBridgeNode) -> FastAPI:
                 hue=float(data.get('hue', 0.5)),
             )
 
+        elif msg_type == 'calibrate':
+            try:
+                bridge.calibrate(data['points'])
+                await out_queue.put({'type': 'calibrate_ack', 'homography': True})
+            except Exception as e:
+                await out_queue.put({'type': 'error', 'message': str(e)})
+                
+
         elif msg_type == 'reload_homography':
             ok = bridge.try_load_homography()
             await out_queue.put({'type': 'status', 'homography': ok})
