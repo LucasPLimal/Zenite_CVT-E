@@ -12,14 +12,14 @@
     --color-red-600: oklch(57.7% 0.245 27.325);
     --color-green-400: oklch(79.2% 0.209 151.711);
     --color-green-600: oklch(62.7% 0.194 149.214);
-    --color-gray-50: oklch(98.5% 0.002 247.839);
-    --color-gray-100: oklch(96.7% 0.003 264.542);
-    --color-gray-200: oklch(92.8% 0.006 264.531);
-    --color-gray-300: oklch(87.2% 0.01 258.338);
-    --color-gray-700: oklch(37.3% 0.034 259.733);
-    --color-gray-800: oklch(27.8% 0.033 256.848);
-    --color-gray-900: oklch(21% 0.034 264.665);
-    --color-gray-950: oklch(13% 0.028 261.692);
+    --color-mauve-50: oklch(98.5% 0 none);
+    --color-mauve-100: oklch(96% 0.003 325.6);
+    --color-mauve-200: oklch(92.2% 0.005 325.62);
+    --color-mauve-300: oklch(86.5% 0.012 325.68);
+    --color-mauve-700: oklch(36.4% 0.029 323.89);
+    --color-mauve-800: oklch(26.3% 0.024 320.12);
+    --color-mauve-900: oklch(21.2% 0.019 322.12);
+    --color-mauve-950: oklch(14.5% 0.008 326);
     --spacing: 0.25rem;
     --text-xs: 0.75rem;
     --text-xs--line-height: calc(1 / 0.75);
@@ -184,18 +184,21 @@
   .static {
     position: static;
   }
+  .block {
+    display: block;
+  }
   .hidden {
     display: none;
   }
 }
 body {
-  background-color: var(--color-gray-100);
-  color: var(--color-gray-900);
+  background-color: var(--color-mauve-100);
+  color: var(--color-mauve-900);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-900);
+    background-color: var(--color-mauve-900);
   }
   @media (prefers-color-scheme: dark) {
-    color: var(--color-gray-100);
+    color: var(--color-mauve-100);
   }
 }
 main {
@@ -213,9 +216,9 @@ canvas {
   height: auto;
   width: 100%;
   border-radius: var(--radius-lg);
-  background-color: var(--color-gray-200);
+  background-color: var(--color-mauve-200);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-800);
+    background-color: var(--color-mauve-800);
   }
 }
 section {
@@ -288,7 +291,7 @@ section.video-section {
   flex-direction: column;
   overflow: auto;
   border-radius: var(--radius-lg);
-  background-color: var(--color-gray-200);
+  background-color: var(--color-mauve-200);
   padding: calc(var(--spacing) * 2);
   @media (width >= 40rem) {
     height: calc(var(--spacing) * 30);
@@ -297,7 +300,7 @@ section.video-section {
     height: calc(var(--spacing) * 60);
   }
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-800);
+    background-color: var(--color-mauve-800);
   }
 }
 nav {
@@ -305,10 +308,10 @@ nav {
   flex-direction: row;
   gap: calc(var(--spacing) * 2);
   border-radius: var(--radius-lg);
-  background-color: var(--color-gray-200);
+  background-color: var(--color-mauve-200);
   padding: var(--spacing);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-800);
+    background-color: var(--color-mauve-800);
   }
 }
 nav>button {
@@ -318,21 +321,21 @@ nav>button {
   padding-block: calc(var(--spacing) * 2);
 }
 nav>button:hover {
-  background-color: var(--color-gray-300);
+  background-color: var(--color-mauve-300);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-700);
+    background-color: var(--color-mauve-700);
   }
 }
 nav>button.selected {
-  background-color: var(--color-gray-100);
+  background-color: var(--color-mauve-100);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-900);
+    background-color: var(--color-mauve-900);
   }
 }
 nav>button.selected:hover {
-  background-color: var(--color-gray-50);
+  background-color: var(--color-mauve-50);
   @media (prefers-color-scheme: dark) {
-    background-color: var(--color-gray-950);
+    background-color: var(--color-mauve-950);
   }
 }
 @property --tw-font-weight {
