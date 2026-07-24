@@ -29,12 +29,12 @@
     </section>
     <section>
       <nav>
-        <button class="selected">Calibragem</button>
-        <button class="">Câmera</button>
-        <button class="">Telemetria</button>
+        <button type="button" class="selected" data-target="calibration">Calibração</button>
+        <button type="button" data-target="camera">Câmera</button>
+        <button type="button" data-target="telemetry">Telemetria</button>
       </nav>
 
-      <div class="card">
+      <div id="calibration" class="block">
         <h2>Telemetria</h2>
         <div class="telemetry">
           <div><span class="label">Posição atual</span><span id="pose-value">—</span></div>
@@ -42,7 +42,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div id="camera" class="hidden">
         <h2>Ajustes da câmera</h2>
         <div class="slider-row">
           <label for="brightness">Brilho</label>
@@ -61,7 +61,7 @@
         </div>
       </div>
 
-      <div class="card">
+      <div id="telemetry" class="hidden">
         <h2>Calibração</h2>
         <p class="small">A homografia é gerada pelo <code>calibration_node</code> (scale.yaml).</p>
         <button id="reload-homography">Recarregar homografia</button>
@@ -72,6 +72,7 @@
   </main>
 
   <script src="{{ url_for('static', path='app.js') }}"></script>
+  <script src="../static/app.js"></script>
 </body>
 
 </html>

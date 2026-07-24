@@ -4,6 +4,8 @@
 const canvas = document.getElementById('video-canvas');
 const ctx = canvas.getContext('2d');
 const noVideo = document.getElementById('no-video');
+const navButtons = Array.from(document.querySelectorAll('nav > button[data-target]'));
+const tabSections = Array.from(document.querySelectorAll('main > section > .card'));
 const connBadge = document.getElementById('conn-badge');
 const homogBadge = document.getElementById('homog-badge');
 const poseValue = document.getElementById('pose-value');
@@ -15,6 +17,39 @@ let currentPose = null;   // {x, y, px?, py?}
 let currentGoal = null;   // {x, y, px, py}
 let hasFrame = false;
 
+function setupSectionTabs() {
+  const buttons = Array.from(document.querySelectorAll('nav button[data-target]'));
+  const sections = Array.from(document.querySelectorAll('main > section > div[id]'));
+
+  function activateSection(targetId) {
+    buttons.forEach((button) => {
+      button.classList.toggle('selected', button.dataset.target === targetId);
+    });
+
+    sections.forEach((section) => {
+      const isActive = section.id === targetId;
+      section.classList.toggle('block', isActive);
+      section.classList.toggle('hidden', !isActive);
+    });
+  }
+
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => {
+      activateSection(button.dataset.target);
+    });
+  });
+
+  const initialTarget = buttons.find((button) => button.classList.contains('selected'))?.dataset.target
+    || buttons[0]?.dataset.target;
+
+  if (initialTarget) {
+    activateSection(initialTarget);
+  }
+}
+
+document.addEventListener('DOMContentLoaded', setupSectionTabs);
+
+/*
 // ------------------------------------------------------------------ //
 // WebSocket
 // ------------------------------------------------------------------ //
@@ -182,3 +217,4 @@ function addLog(text, isError = false) {
 }
 
 connect();
+ */
