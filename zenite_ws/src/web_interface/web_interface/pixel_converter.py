@@ -19,15 +19,18 @@ class PixelConverter:
     def ready(self) -> bool:
         return self.H is not None
 
-    def load_from_yaml(self, path: str) -> None:
-        with open(path, 'r') as f:
-            data = yaml.safe_load(f)
 
-        pixel_points = np.array(data['pixel_points'], dtype=np.float32)
-        real_points = np.array(data['real_points'], dtype=np.float32)
+    #recebe os pontos e calcula homografia com o opencv
+    def set_reference_points(self, pixel_points, real_points) -> None:
+        """Calcula a homografia a partir de 4 pontos (pixel <-> metro).
+
+        Equivalente a zenite_utils::PixelConverter::setReferencePoints (C++).
+        """
+        pixel_points = np.array(pixel_points, dtype=np.float32)
+        real_points = np.array(real_points, dtype=np.float32)
 
         if pixel_points.shape != (4, 2) or real_points.shape != (4, 2):
-            raise ValueError('scale.yaml precisa conter 4 pontos de referência (pixel_points e real_points)')
+            raise ValueError('São necessários 4 pontos de referência (pixel_points e real_points)')
 
         H, _ = cv2.findHomography(pixel_points, real_points)
         if H is None:
@@ -35,6 +38,8 @@ class PixelConverter:
 
         self.H = H
         self.H_inv = np.linalg.inv(H)
+        self._pixel_points = pixel_points
+        self._real_points = real_points
 
     def _transform(self, x: float, y: float, matrix) -> tuple:
         src = np.array([[[x, y]]], dtype=np.float32)
@@ -50,3 +55,25 @@ class PixelConverter:
         if not self.ready:
             raise RuntimeError('Homografia não carregada')
         return self._transform(x, y, self.H_inv)
+
+
+    def save_to_yaml(self, path: str) -> None:
+            """Salva pixel_points/real_points no mesmo formato do calibration_node (C++)."""
+            if not self.ready:
+                raise RuntimeError('Homografia não calculada')
+    
+            data = {
+                'pixel_points': self._pixel_points.tolist(),
+                'real_points': self._real_points.tolist(),
+            }
+            with open(path, 'w') as f:
+                yaml.safe_dump(data, f)
+
+
+    def load_from_yaml(self, path: str) -> None:
+        with open(path, 'r') as f:
+            data = yaml.safe_load(f) #carrega os dados do arquivo yaml
+
+        pixel_points = np.array(data['pixel_points'], dtype=np.float32) #dados de pixel
+        real_points = np.array(data['real_points'], dtype=np.float32) #dados de pixel
+        self.set_reference_points(pixel_points, real_points)
