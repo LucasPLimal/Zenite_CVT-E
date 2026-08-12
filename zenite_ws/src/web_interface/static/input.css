@@ -1,10 +1,5 @@
 @import "tailwindcss";
 
-@theme {
-  --color-primary: oklch(70.4% 0.191 22.216);
-  --color-secondary: oklch(88.5% 0.062 18.334)
-}
-
 body {
   @apply bg-mauve-100 text-mauve-900 dark:bg-mauve-900 dark:text-mauve-100
 }
@@ -24,6 +19,31 @@ section {
 section.video-section {
   @apply flex flex-col lg:w-2/3 gap-3
 }
+
+.buttonPrimary {
+  @apply flex flex-row w-max h-max justify-center rounded-lg py-2 px-3 gap-2 bg-rose-600 text-white font-medium text-sm transition-colors duration-300
+}
+
+.buttonPrimary:hover {
+  @apply bg-rose-500 cursor-pointer
+}
+
+.toggle {
+  @apply relative inline-block top-2
+}
+
+.toggle>input {
+  @apply appearance-none w-12 h-6 bg-mauve-300 dark:bg-mauve-700 rounded-full checked:bg-rose-600 cursor-pointer transition-colors duration-300
+}
+
+.toggle>input:hover {
+  @apply bg-mauve-200 dark:bg-mauve-600 checked:bg-rose-500
+}
+
+.toggle>label {
+  @apply absolute top-0 left-0 w-6 h-6 bg-mauve-100 rounded-full shadow-sm transition-transform duration-300 peer-checked:translate-x-6 cursor-pointer
+}
+
 
 .badges {
   @apply flex gap-2
@@ -53,23 +73,30 @@ section.video-section {
   @apply flex flex-col w-full overflow-auto sm:h-30 lg:h-60 p-2 rounded-lg bg-mauve-200 dark:bg-mauve-800
 }
 
-nav {
+.navRow {
   @apply flex flex-row gap-2 bg-mauve-200 dark:bg-mauve-800 p-1 rounded-lg
 }
 
-nav>button {
-  @apply w-full px-4 py-2 rounded-lg 
+.navRow>.buttonNav {
+  @apply w-full px-4 py-2 rounded-lg transition-colors duration-300
 }
 
-nav>button:hover {
-  @apply bg-mauve-300 dark:bg-mauve-700
+.navRow>.buttonNav:hover {
+  @apply bg-mauve-300 dark:bg-mauve-700 cursor-pointer
 }
 
-nav>button.selected {
+.navRow>.buttonNav.selected {
   @apply bg-mauve-100 dark:bg-mauve-900
 }
 
-nav>button.selected:hover {
-  @apply bg-mauve-50 dark:bg-mauve-950
+.navRow>.buttonNav.selected:hover {
+  @apply bg-mauve-300 dark:bg-mauve-700 cursor-pointer
 }
 
+.sectionTab {
+  @apply flex flex-col gap-3 p-3 w-full h-auto rounded-lg bg-mauve-200 dark:bg-mauve-800
+}
+
+.sectionTab>h2 {
+  @apply text-lg font-semibold
+}
