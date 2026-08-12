@@ -4,8 +4,8 @@
 const canvas = document.getElementById('video-canvas');
 const ctx = canvas.getContext('2d');
 const noVideo = document.getElementById('no-video');
-const navButtons = Array.from(document.querySelectorAll('nav > button[data-target]'));
-const tabSections = Array.from(document.querySelectorAll('main > section > .card'));
+const navButtons = Array.from(document.querySelectorAll('.navRow button[data-target]'));
+const tabSections = Array.from(document.querySelectorAll('main > section > div[id]'));
 const connBadge = document.getElementById('conn-badge');
 const homogBadge = document.getElementById('homog-badge');
 const poseValue = document.getElementById('pose-value');
@@ -18,8 +18,12 @@ let currentGoal = null;   // {x, y, px, py}
 let hasFrame = false;
 
 function setupSectionTabs() {
-  const buttons = Array.from(document.querySelectorAll('nav button[data-target]'));
-  const sections = Array.from(document.querySelectorAll('main > section > div[id]'));
+  const buttons = navButtons;
+  const sections = tabSections;
+
+  if (!buttons.length || !sections.length) {
+    return;
+  }
 
   function activateSection(targetId) {
     buttons.forEach((button) => {
