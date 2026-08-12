@@ -8,15 +8,19 @@
       "Segoe UI Symbol", "Noto Color Emoji";
     --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono",
       "Courier New", monospace;
+    --color-red-200: oklch(88.5% 0.062 18.334);
     --color-red-400: oklch(70.4% 0.191 22.216);
     --color-red-600: oklch(57.7% 0.245 27.325);
+    --color-green-200: oklch(92.5% 0.084 155.995);
     --color-green-400: oklch(79.2% 0.209 151.711);
     --color-green-600: oklch(62.7% 0.194 149.214);
     --color-rose-500: oklch(64.5% 0.246 16.439);
     --color-rose-600: oklch(58.6% 0.253 17.585);
+    --color-rose-700: oklch(51.4% 0.222 16.935);
     --color-mauve-100: oklch(96% 0.003 325.6);
     --color-mauve-200: oklch(92.2% 0.005 325.62);
     --color-mauve-300: oklch(86.5% 0.012 325.68);
+    --color-mauve-400: oklch(71.1% 0.019 323.02);
     --color-mauve-600: oklch(43.5% 0.029 321.78);
     --color-mauve-700: oklch(36.4% 0.029 323.89);
     --color-mauve-800: oklch(26.3% 0.024 320.12);
@@ -204,9 +208,6 @@
   .inline-flex {
     display: inline-flex;
   }
-  .cursor-pointer {
-    cursor: pointer;
-  }
   .flex-col {
     flex-direction: column;
   }
@@ -313,7 +314,10 @@ section.video-section {
 }
 .buttonPrimary:hover {
   cursor: pointer;
-  background-color: var(--color-rose-500);
+  background-color: var(--color-rose-700);
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-rose-500);
+  }
 }
 .toggle {
   position: relative;
@@ -340,7 +344,7 @@ section.video-section {
   }
 }
 .toggle>input:hover {
-  background-color: var(--color-mauve-200);
+  background-color: var(--color-mauve-400);
   &:checked {
     background-color: var(--color-rose-500);
   }
@@ -387,19 +391,31 @@ section.video-section {
 .badges>span.success {
   border-style: var(--tw-border-style);
   border-width: 1px;
-  border-color: var(--color-green-600);
-  background-color: color-mix(in srgb, oklch(79.2% 0.209 151.711) 30%, transparent);
-  @supports (color: color-mix(in lab, red, red)) {
-    background-color: color-mix(in oklab, var(--color-green-400) 30%, transparent);
+  border-color: var(--color-green-200);
+  background-color: var(--color-green-200);
+  @media (prefers-color-scheme: dark) {
+    border-color: var(--color-green-600);
+  }
+  @media (prefers-color-scheme: dark) {
+    background-color: color-mix(in srgb, oklch(79.2% 0.209 151.711) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-green-400) 30%, transparent);
+    }
   }
 }
 .badges>span.error {
   border-style: var(--tw-border-style);
   border-width: 1px;
-  border-color: var(--color-red-600);
-  background-color: color-mix(in srgb, oklch(70.4% 0.191 22.216) 30%, transparent);
-  @supports (color: color-mix(in lab, red, red)) {
-    background-color: color-mix(in oklab, var(--color-red-400) 30%, transparent);
+  border-color: var(--color-red-200);
+  background-color: var(--color-red-200);
+  @media (prefers-color-scheme: dark) {
+    border-color: var(--color-red-600);
+  }
+  @media (prefers-color-scheme: dark) {
+    background-color: color-mix(in srgb, oklch(70.4% 0.191 22.216) 30%, transparent);
+    @supports (color: color-mix(in lab, red, red)) {
+      background-color: color-mix(in oklab, var(--color-red-400) 30%, transparent);
+    }
   }
 }
 .console {
