@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 body {
-  @apply bg-mauve-100 text-mauve-900 dark:bg-mauve-900 dark:text-mauve-100 
+  @apply bg-mauve-100 text-mauve-900 dark:bg-mauve-900 dark:text-mauve-100
 }
 
 main {
@@ -26,6 +26,31 @@ section.video-section {
 
 .buttonPrimary:hover {
   @apply bg-rose-700 dark:bg-rose-500 cursor-pointer
+}
+
+.slider-row>input[type="range"] {
+  --value: 50%;
+  @apply w-full h-2 rounded-full appearance-none cursor-pointer outline-none bg-transparent;
+  background: linear-gradient(
+    to right,
+    oklch(58.6% 0.253 17.585) 0%,
+    oklch(58.6% 0.253 17.585) var(--value),
+    oklch(36.4% 0.029 323.89) var(--value),
+    oklch(36.4% 0.029 323.89) 100%
+  );
+}
+
+.slider-row>input[type="range"]::-moz-range-track {
+  @apply h-2 rounded-full;
+  background: transparent;
+}
+
+.slider-row>input[type="range"]::-webkit-slider-thumb {
+  @apply w-6 h-6 appearance-none pointer-events-auto bg-mauve-100 border border-rose-600 border-4 rounded-full cursor-pointer;
+}
+
+.slider-row>input[type="range"]::-moz-range-thumb {
+  @apply w-4 h-4 appearance-none pointer-events-auto bg-mauve-100 border border-rose-600 border-4 rounded-full cursor-pointer;
 }
 
 .toggle {
@@ -57,7 +82,7 @@ section.video-section {
 }
 
 .badges>span {
-  @apply font-medium px-2.3 py-1.5 rounded-full text-xs sm:text-sm
+  @apply font-medium px-2.5 py-1.5 rounded-full text-xs sm:text-sm
 }
 
 .badges>span.success {

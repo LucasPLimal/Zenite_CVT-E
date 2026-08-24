@@ -300,6 +300,49 @@ section.video-section {
     background-color: var(--color-rose-500);
   }
 }
+.slider-row>input[type="range"] {
+  --value: 50%;
+  height: calc(var(--spacing) * 2);
+  width: 100%;
+  cursor: pointer;
+  appearance: none;
+  border-radius: calc(infinity * 1px);
+  background-color: transparent;
+  --tw-outline-style: none;
+  outline-style: none;
+  background: linear-gradient( to right, oklch(58.6% 0.253 17.585) 0%, oklch(58.6% 0.253 17.585) var(--value), oklch(36.4% 0.029 323.89) var(--value), oklch(36.4% 0.029 323.89) 100% );
+}
+.slider-row>input[type="range"]::-moz-range-track {
+  height: calc(var(--spacing) * 2);
+  border-radius: calc(infinity * 1px);
+  background: transparent;
+}
+.slider-row>input[type="range"]::-webkit-slider-thumb {
+  pointer-events: auto;
+  height: calc(var(--spacing) * 6);
+  width: calc(var(--spacing) * 6);
+  cursor: pointer;
+  appearance: none;
+  border-radius: calc(infinity * 1px);
+  border-width: 1px;
+  border-style: var(--tw-border-style);
+  border-width: 4px;
+  border-color: var(--color-rose-600);
+  background-color: var(--color-mauve-100);
+}
+.slider-row>input[type="range"]::-moz-range-thumb {
+  pointer-events: auto;
+  height: calc(var(--spacing) * 4);
+  width: calc(var(--spacing) * 4);
+  cursor: pointer;
+  appearance: none;
+  border-radius: calc(infinity * 1px);
+  border-width: 1px;
+  border-style: var(--tw-border-style);
+  border-width: 4px;
+  border-color: var(--color-rose-600);
+  background-color: var(--color-mauve-100);
+}
 .toggle {
   position: relative;
   top: calc(var(--spacing) * 2);
@@ -383,12 +426,16 @@ section.video-section {
 }
 .badges>span {
   border-radius: calc(infinity * 1px);
-  padding-inline: calc(var(--spacing) * 2);
+  padding-inline: calc(var(--spacing) * 2.5);
   padding-block: calc(var(--spacing) * 1.5);
   font-size: var(--text-xs);
   line-height: var(--tw-leading, var(--text-xs--line-height));
   --tw-font-weight: var(--font-weight-medium);
   font-weight: var(--font-weight-medium);
+  @media (width >= 40rem) {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
 }
 .badges>span.success {
   border-style: var(--tw-border-style);
@@ -531,6 +578,11 @@ section.video-section {
   syntax: "*";
   inherits: false;
 }
+@property --tw-border-style {
+  syntax: "*";
+  inherits: false;
+  initial-value: solid;
+}
 @property --tw-shadow {
   syntax: "*";
   inherits: false;
@@ -611,16 +663,12 @@ section.video-section {
   inherits: false;
   initial-value: 0;
 }
-@property --tw-border-style {
-  syntax: "*";
-  inherits: false;
-  initial-value: solid;
-}
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
       --tw-font-weight: initial;
       --tw-duration: initial;
+      --tw-border-style: solid;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;
       --tw-shadow-alpha: 100%;
@@ -638,7 +686,6 @@ section.video-section {
       --tw-translate-x: 0;
       --tw-translate-y: 0;
       --tw-translate-z: 0;
-      --tw-border-style: solid;
     }
   }
 }
