@@ -12,6 +12,9 @@ const poseValue = document.getElementById('pose-value');
 const goalValue = document.getElementById('goal-value');
 const logList = document.getElementById('log');
 
+const rangeInputs = Array.from(document.querySelectorAll('.slider-row input[type="range"]'));
+
+
 let ws = null;
 let currentPose = null;   // {x, y, px?, py?}
 let currentGoal = null;   // {x, y, px, py}
@@ -51,7 +54,22 @@ function setupSectionTabs() {
   }
 }
 
+function updateRangeFill(range) {
+  const min = Number(range.min || 0);
+  const max = Number(range.max || 100);
+  const value = Number(range.value || min);
+  const percent = ((value - min) / (max - min || 1)) * 100;
+
+  range.style.setProperty('--value', `${percent}%`);
+}
+
+rangeInputs.forEach((range) => {
+  updateRangeFill(range);
+  range.addEventListener('input', () => updateRangeFill(range));
+});
+
 document.addEventListener('DOMContentLoaded', setupSectionTabs);
+
 
 /*
 // ------------------------------------------------------------------ //
