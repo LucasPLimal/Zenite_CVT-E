@@ -39,10 +39,9 @@
       <div id="calibration" class="block flex-col gap-3">
         <div class="sectionTab">
           <h2>Calibração</h2>
-          <div class="flex flex-row gap-2">
+          <div class="flex flex-row items-center gap-2">
             <button class="buttonPrimary">Calibrar ponto</button>
             <button class="buttonPrimary">Localizar robô</button>
-            <button class="buttonPrimary">Resetar</button>
           </div>
         </div>
         <div class="sectionTab">
@@ -99,28 +98,59 @@
         <div class="sectionTab">
           <h2>Ajustes da câmera</h2>
           <div class="slider-row">
-            <label for="brightness">Brilho</label>
-            <input type="range" id="brightness" min="0" max="255" value="150">
-            <span id="brightness-value">150</span>
+            <label for="brilho">Brilho</label>
+            <input type="range" id="brilho" min="0" max="255" value="100">
           </div>
           <div class="slider-row">
-            <label for="saturation">Saturação</label>
-            <input type="range" id="saturation" min="0" max="255" value="172">
-            <span id="saturation-value">172</span>
+            <label for="contraste">Contraste</label>
+            <input type="range" id="contraste" min="0" max="255" value="100">
           </div>
           <div class="slider-row">
-            <label for="hue">Hue</label>
-            <input type="range" id="hue" min="0" max="255" value="255">
-            <span id="hue-value">255</span>
+            <label for="saturacao">Saturação</label>
+            <input type="range" id="saturacao" min="0" max="255" value="100">
+          </div>
+          <div class="slider-row">
+            <label for="matiz">Matiz</label>
+            <input type="range" id="matiz" min="0" max="255" value="100">
+          </div>
+          <div class="slider-row">
+            <label for="exposicao">Exposição</label>
+            <input type="range" id="exposicao" min="0" max="255" value="100">
+          </div>
+          <div class="slider-row">
+            <label for="ganho">Ganho</label>
+            <input type="range" id="ganho" min="0" max="255" value="100">
+          </div>
+          <div class="slider-row">
+            <label for="foco">Foco</label>
+            <input type="range" id="foco" min="0" max="255" value="100">
           </div>
         </div>
       </div>
 
       <div id="telemetry" class="hidden">
         <div class="sectionTab">
-          <h2>Calibração</h2>
-          <p class="small">A homografia é gerada pelo <code>calibration_node</code> (scale.yaml).</p>
-          <button id="reload-homography">Recarregar homografia</button>
+          <h2>Informações de posição</h2>
+          <div class="telemetry-line">
+            <h6>Posição atual</h6>
+            <p>(0.24, 0.31) m</p>
+          </div>
+          <div class="telemetry-line">
+            <h6>Posição inicial</h6>
+            <p>(0.24, 0.31) m</p>
+          </div>
+          <div class="telemetry-line">
+            <h6>Posição alvo</h6>
+            <p>(0.24, 0.31) m</p>
+          </div>
+          <div class="telemetry-line">
+            <h6>Último ponto alvo</h6>
+            <p>(0.24, 0.31) m</p>
+          </div>
+          <div class="telemetry-line">
+            <h6>Área de calibragem</h6>
+            <p>(12, 920, -204, -80) px</p>
+          </div>
         </div>
       </div>
 

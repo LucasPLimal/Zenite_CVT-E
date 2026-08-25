@@ -214,6 +214,9 @@
   .flex-row {
     flex-direction: row;
   }
+  .items-center {
+    align-items: center;
+  }
   .gap-2 {
     gap: calc(var(--spacing) * 2);
   }
@@ -300,6 +303,22 @@ section.video-section {
     background-color: var(--color-rose-500);
   }
 }
+.buttonIcon {
+  height: calc(var(--spacing) * 6);
+  width: calc(var(--spacing) * 6);
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  color: var(--color-mauve-800);
+  @media (prefers-color-scheme: dark) {
+    color: var(--color-mauve-100);
+  }
+}
+.buttonIcon:hover {
+  color: var(--color-mauve-700);
+  @media (prefers-color-scheme: dark) {
+    color: var(--color-mauve-300);
+  }
+}
 .slider-row>input[type="range"] {
   --value: 50%;
   height: calc(var(--spacing) * 2);
@@ -310,7 +329,7 @@ section.video-section {
   background-color: transparent;
   --tw-outline-style: none;
   outline-style: none;
-  background: linear-gradient( to right, oklch(58.6% 0.253 17.585) 0%, oklch(58.6% 0.253 17.585) var(--value), oklch(36.4% 0.029 323.89) var(--value), oklch(36.4% 0.029 323.89) 100% );
+  background: linear-gradient(to right, oklch(58.6% 0.253 17.585) 0%, oklch(58.6% 0.253 17.585) var(--value), oklch(36.4% 0.029 323.89) var(--value), oklch(36.4% 0.029 323.89) 100%);
 }
 .slider-row>input[type="range"]::-moz-range-track {
   height: calc(var(--spacing) * 2);
@@ -567,6 +586,28 @@ section.video-section {
 .sectionTab>h2 {
   font-size: var(--text-lg);
   line-height: var(--tw-leading, var(--text-lg--line-height));
+  --tw-font-weight: var(--font-weight-semibold);
+  font-weight: var(--font-weight-semibold);
+}
+.telemetry-line {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 2);
+}
+.telemetry-line>h6 {
+  font-size: var(--text-sm);
+  line-height: var(--tw-leading, var(--text-sm--line-height));
+  --tw-font-weight: var(--font-weight-medium);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-mauve-700);
+  @media (prefers-color-scheme: dark) {
+    color: var(--color-mauve-300);
+  }
+}
+.telemetry-line>p {
+  font-size: var(--text-sm);
+  line-height: var(--tw-leading, var(--text-sm--line-height));
   --tw-font-weight: var(--font-weight-semibold);
   font-weight: var(--font-weight-semibold);
 }
