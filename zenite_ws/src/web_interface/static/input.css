@@ -1,5 +1,18 @@
 @import "tailwindcss";
 
+@view-transition {
+  navigation: auto;
+}
+
+::view-transition-old(root) {
+  animation: 0.4s ease-in-outfadeOut;
+}
+
+::view-transition-new(root) {
+  animation: 0.4s ease-in-out fadeIn;
+}
+
+
 body {
   @apply bg-mauve-100 text-mauve-900 dark:bg-mauve-900 dark:text-mauve-100
 }
@@ -20,8 +33,13 @@ section.video-section {
   @apply flex flex-col lg:w-2/3 gap-3
 }
 
+section>div {
+  @apply transition duration-150 ease-in-out transition-discrete
+}
+
 .buttonPrimary {
-  @apply text-xs sm:text-sm flex flex-row w-max h-max justify-center rounded-lg py-2 px-3 gap-2 bg-rose-600 text-white font-medium transition-colors duration-300
+  @apply text-xs sm:text-sm flex flex-row w-max h-max justify-center rounded-lg py-2 px-3 gap-2 bg-rose-600 text-white font-medium;
+  @apply transition-colors duration-300
 }
 
 .buttonPrimary:hover {
@@ -29,7 +47,8 @@ section.video-section {
 }
 
 .buttonIcon {
-  @apply w-6 h-6 dark:text-mauve-100 text-mauve-800 rounded-lg cursor-pointer
+  @apply w-6 h-6 dark:text-mauve-100 text-mauve-800 rounded-lg cursor-pointer;
+  @apply transition-colors duration-300
 }
 
 .buttonIcon:hover {
@@ -64,7 +83,8 @@ section.video-section {
 }
 
 .toggle>input {
-  @apply appearance-none w-12 h-6 bg-mauve-300 dark:bg-mauve-700 rounded-full checked:bg-rose-600 cursor-pointer transition-colors duration-300
+  @apply appearance-none w-12 h-6 bg-mauve-300 dark:bg-mauve-700 rounded-full checked:bg-rose-600 cursor-pointer;
+  @apply transition-colors transition-discrete duration-300
 }
 
 .toggle>input:hover {
@@ -116,7 +136,8 @@ section.video-section {
 }
 
 .navRow>.buttonNav {
-  @apply w-full px-4 py-2 rounded-lg transition-colors duration-300 text-xs sm:text-sm font-medium
+  @apply w-full px-4 py-2 rounded-lg text-xs sm:text-sm font-medium;
+  @apply transition-colors duration-300
 }
 
 .navRow>.buttonNav:hover {
