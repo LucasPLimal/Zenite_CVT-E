@@ -28,16 +28,22 @@ section.video-section {
   @apply bg-rose-700 dark:bg-rose-500 cursor-pointer
 }
 
+.buttonIcon {
+  @apply w-6 h-6 dark:text-mauve-100 text-mauve-800 rounded-lg cursor-pointer
+}
+
+.buttonIcon:hover {
+  @apply dark:text-mauve-300 text-mauve-700
+}
+
 .slider-row>input[type="range"] {
   --value: 50%;
   @apply w-full h-2 rounded-full appearance-none cursor-pointer outline-none bg-transparent;
-  background: linear-gradient(
-    to right,
-    oklch(58.6% 0.253 17.585) 0%,
-    oklch(58.6% 0.253 17.585) var(--value),
-    oklch(36.4% 0.029 323.89) var(--value),
-    oklch(36.4% 0.029 323.89) 100%
-  );
+  background: linear-gradient(to right,
+      oklch(58.6% 0.253 17.585) 0%,
+      oklch(58.6% 0.253 17.585) var(--value),
+      oklch(36.4% 0.029 323.89) var(--value),
+      oklch(36.4% 0.029 323.89) 100%);
 }
 
 .slider-row>input[type="range"]::-moz-range-track {
@@ -131,4 +137,16 @@ section.video-section {
 
 .sectionTab>h2 {
   @apply text-lg font-semibold
+}
+
+.telemetry-line {
+  @apply flex flex-row justify-between gap-2
+}
+
+.telemetry-line>h6 {
+  @apply text-sm font-medium text-mauve-700 dark:text-mauve-300
+}
+
+.telemetry-line>p {
+  @apply text-sm font-semibold
 }
