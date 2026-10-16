@@ -205,7 +205,7 @@ Depois rode os launchers:
 
 Para calibração:
 ```bash
-ros2 launch zenite_launch zenite_calibration.py
+ros2 launch zenite_launch zenite_calibration_launch.py
 ```
 
 Para execução completa:
