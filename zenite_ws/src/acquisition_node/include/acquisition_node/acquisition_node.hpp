@@ -105,8 +105,18 @@ public:
         //
         // O índice 0 corresponde normalmente
         // à primeira câmera conectada ao computador.
+        //
+        // O índice vem do parâmetro "video_index" (padrão 2, o valor
+        // histórico do projeto). Para usar /dev/video0:
+        //   ros2 run acquisition_node acquisition_node \
+        //       --ros-args -p video_index:=0
         // =======================================================
-        cap_.open(2);
+        const int video_index =
+            this->declare_parameter<int>("video_index", 2);
+        const std::string video_path =
+            "/dev/video" + std::to_string(video_index);
+
+        cap_.open(video_index);
 
 
         // Verifica se a câmera foi aberta corretamente.
@@ -124,7 +134,7 @@ public:
         //
         // Isso permite controlar parâmetros internos da webcam.
         // =======================================================
-        fd_ = open("/dev/video2", O_RDWR);
+        fd_ = open(video_path.c_str(), O_RDWR);
 
 
         // Caso ocorra erro.
@@ -132,7 +142,7 @@ public:
 
             RCLCPP_ERROR(
                 this->get_logger(),
-                "Erro ao acessar /dev/video0");
+                "Erro ao acessar %s", video_path.c_str());
         }
 
         else {
