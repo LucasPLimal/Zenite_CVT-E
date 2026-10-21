@@ -677,6 +677,11 @@ section>div {
   cursor: not-allowed;
 }
 
+#video-canvas.calibrating,
+#video-canvas.locating {
+  cursor: crosshair;
+}
+
 @property --tw-duration {
   syntax: "*";
   inherits: false;

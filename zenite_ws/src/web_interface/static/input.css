@@ -211,3 +211,8 @@ section>div {
 .slider-row>input[type="range"]:disabled::-moz-range-thumb {
   cursor: not-allowed;
 }
+
+#video-canvas.calibrating,
+#video-canvas.locating {
+  cursor: crosshair;
+}

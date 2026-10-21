@@ -38,9 +38,14 @@
       <div id="calibration" class="block flex-col gap-3">
         <div class="sectionTab">
           <h2>Calibração</h2>
-          <div class="flex flex-row items-center gap-2">
-            <button class="buttonPrimary">Calibrar ponto</button>
-            <button class="buttonPrimary">Localizar robô</button>
+          <div class="flex flex-row flex-wrap items-center gap-2">
+            <button id="calibrate-toggle" class="buttonPrimary">Calibrar ponto</button>
+            <button id="locate-robot-btn" class="buttonPrimary"
+              title="Selecione o robô arrastando um retângulo sobre ele">Localizar robô</button>
+            <button id="reload-homography" class="buttonPrimary">Recarregar homografia</button>
+          </div>
+          <div class="toggleLabel">
+            <p id="calibration-status">Ponto 0 de 4.</p>
           </div>
         </div>
         <div class="sectionTab">
