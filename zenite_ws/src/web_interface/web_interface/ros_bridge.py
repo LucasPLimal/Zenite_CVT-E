@@ -8,8 +8,20 @@ frames antigos são naturalmente descartados (sempre se envia só o mais novo).
 Tópicos:
   assina  camera_frame        (sensor_msgs/Image)          -> stream p/ web
   assina  /current_position   (std_msgs/Float64MultiArray) -> telemetria p/ web
+                                                                (também publicado
+                                                                por este nó quando
+                                                                o rastreamento via
+                                                                web está ativo)
   publica /desired_position   (geometry_msgs/Point)        <- clique do usuário
+  publica /current_position   (std_msgs/Float64MultiArray) <- rastreamento CSRT
+                                                                ("Localizar robô")
   publica image_params        (image_adjust_msgs/ImageParams) <- sliders
+
+O rastreamento ("Localizar robô") equivale ao localization_node (C++): mesmo
+algoritmo (cv2.TrackerCSRT), mesmo cálculo de centro e mesmo cooldown de
+publicação (50ms). A diferença é a inicialização: em vez de cv::selectROI
+(janela OpenCV local), o retângulo inicial vem da seleção por marquee feita
+no navegador.
 """
 
 import threading
@@ -17,6 +29,7 @@ import threading
 import numpy as np
 import cv2
 import rclpy
+from rclpy.duration import Duration
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from geometry_msgs.msg import Point
@@ -26,21 +39,30 @@ from image_adjust_msgs.msg import ImageParams
 from .pixel_converter import PixelConverter
 
 
-class RosBridgeNode(Node):
+def _create_csrt_tracker():
+    """Cria um cv2.TrackerCSRT, cobrindo as duas localizações possíveis da API
+    conforme a versão do opencv-contrib-python (legacy.* a partir da 4.5.1)."""
+    if hasattr(cv2, 'legacy') and hasattr(cv2.legacy, 'TrackerCSRT_create'):
+        return cv2.legacy.TrackerCSRT_create()
+    if hasattr(cv2, 'TrackerCSRT_create'):
+        return cv2.TrackerCSRT_create()
+    raise RuntimeError(
+        'cv2.TrackerCSRT não disponível. Verifique se o opencv-contrib-python '
+        'está instalado (não o opencv-python) — veja o README.')
 
+
+class RosBridgeNode(Node):
     # Mesma arena hardcoded do calibration_node (C++): 2,75 x 2,25 m.
     # Ordem esperada dos cliques: (0,0) -> (2.75,0) -> (2.75,2.25) -> (0,2.25).
     CALIBRATION_WORLD_POINTS = [
         (0.0, 0.0), (2.75, 0.0), (2.75, 2.25), (0.0, 2.25),
     ]
 
-
     def __init__(self):
         super().__init__('web_interface_node')
 
         self.scale_yaml_path = self.declare_parameter(
             'scale_yaml_path', '/tmp/scale.yaml').value
-        
         self.jpeg_quality = int(self.declare_parameter('jpeg_quality', 70).value)
         self.host = self.declare_parameter('host', '0.0.0.0').value
         self.port = int(self.declare_parameter('port', 8000).value)
@@ -53,6 +75,14 @@ class RosBridgeNode(Node):
         self._frame_seq = 0
         self._latest_pose = None
         self._pose_seq = 0
+        self._latest_frame = None  # frame BGR bruto, para inicializar o tracker
+
+        # Rastreamento CSRT ("Localizar robô") — só acessado na thread do rclpy,
+        # exceto a inicialização em locate_robot() (thread do asyncio via WS).
+        self._tracker = None
+        self._tracking = False
+        self._last_track_publish = self.get_clock().now()
+        self._track_cooldown = Duration(seconds=0.05)  # mesmo cooldown do localization_node
 
         self.create_subscription(
             Image, 'camera_frame', self._image_callback, 10)
@@ -61,6 +91,7 @@ class RosBridgeNode(Node):
 
         self._goal_pub = self.create_publisher(Point, '/desired_position', 10)
         self._params_pub = self.create_publisher(ImageParams, 'image_params', 10)
+        self._pos_pub = self.create_publisher(Float64MultiArray, '/current_position', 10)
 
         self.get_logger().info('web_interface_node iniciado!')
 
@@ -89,6 +120,11 @@ class RosBridgeNode(Node):
         if frame is None:
             return
 
+        with self._lock:
+            self._latest_frame = frame
+
+        self._update_tracking(frame)
+
         ok, jpeg = cv2.imencode(
             '.jpg', frame, [cv2.IMWRITE_JPEG_QUALITY, self.jpeg_quality])
         if not ok:
@@ -97,6 +133,36 @@ class RosBridgeNode(Node):
         with self._lock:
             self._latest_jpeg = jpeg.tobytes()
             self._frame_seq += 1
+
+    def _update_tracking(self, frame):
+        """Equivalente ao loop principal do localization_node (C++):
+        tracker->update() a cada frame, converte o centro do ROI para metros
+        e publica em /current_position respeitando o cooldown."""
+        if not self._tracking or self._tracker is None:
+            return
+
+        success, roi = self._tracker.update(frame)
+        if not success:
+            # Mesmo comportamento do C++: só pula a publicação nesse frame,
+            # não desliga o rastreamento (pode se recuperar no próximo frame).
+            return
+
+        x, y, w, h = roi
+        cx, cy = x + w / 2.0, y + h / 2.0
+
+        if not self.converter.ready:
+            return
+
+        now = self.get_clock().now()
+        if now - self._last_track_publish < self._track_cooldown:
+            return
+        self._last_track_publish = now
+
+        x_m, y_m = self.converter.pixel_to_meter(cx, cy)
+
+        pos_msg = Float64MultiArray()
+        pos_msg.data = [x_m, y_m]
+        self._pos_pub.publish(pos_msg)
 
     def _image_msg_to_bgr(self, msg: Image):
         try:
@@ -170,14 +236,6 @@ class RosBridgeNode(Node):
             f'Clique na imagem: ({px:.1f}, {py:.1f}) -> Mundo: ({x_m:.2f}, {y_m:.2f})')
         return {'px': px, 'py': py, 'x': x_m, 'y': y_m}
 
-    def publish_params(self, brightness: float, saturation: float, hue: float):
-        """Publica parâmetros de imagem normalizados (0.0 a 1.0)."""
-        msg = ImageParams()
-        msg.brightness = float(np.clip(brightness, 0.0, 1.0))
-        msg.saturation = float(np.clip(saturation, 0.0, 1.0))
-        msg.hue = float(np.clip(hue, 0.0, 1.0))
-        self._params_pub.publish(msg)
-
     def calibrate(self, pixel_points) -> None:
         """Calibra a homografia a partir de 4 pontos clicados na imagem.
 
@@ -192,3 +250,41 @@ class RosBridgeNode(Node):
 
         self.get_logger().info(
             f'Calibração concluída via interface web. Homografia salva em {self.scale_yaml_path}')
+
+    def locate_robot(self, x: float, y: float, width: float, height: float) -> None:
+        """Inicializa o rastreamento CSRT a partir do retângulo selecionado no navegador.
+
+        Equivalente ao cv::selectROI + tracker->init() do localization_node (C++),
+        usando o frame mais recente da câmera em vez de uma janela local.
+        """
+        if width <= 0 or height <= 0:
+            raise ValueError('Seleção inválida: largura e altura precisam ser maiores que zero')
+
+        with self._lock:
+            frame = self._latest_frame
+
+        if frame is None:
+            raise RuntimeError('Nenhum frame de câmera disponível ainda')
+
+        tracker = _create_csrt_tracker()
+        tracker.init(frame, (float(x), float(y), float(width), float(height)))
+
+        self._tracker = tracker
+        self._tracking = True
+
+        self.get_logger().info(
+            f'Rastreamento do robô iniciado via interface web: '
+            f'ROI=({x:.0f}, {y:.0f}, {width:.0f}, {height:.0f})')
+
+    def reset_tracking(self) -> None:
+        self._tracker = None
+        self._tracking = False
+        self.get_logger().info('Rastreamento do robô resetado.')
+
+    def publish_params(self, brightness: float, saturation: float, hue: float):
+        """Publica parâmetros de imagem normalizados (0.0 a 1.0)."""
+        msg = ImageParams()
+        msg.brightness = float(np.clip(brightness, 0.0, 1.0))
+        msg.saturation = float(np.clip(saturation, 0.0, 1.0))
+        msg.hue = float(np.clip(hue, 0.0, 1.0))
+        self._params_pub.publish(msg)

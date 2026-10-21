@@ -14,7 +14,10 @@
   <depend>image_adjust_msgs</depend>
 
   <exec_depend>python3-numpy</exec_depend>
-  <exec_depend>python3-opencv</exec_depend>
+  <!-- opencv-contrib-python (via pip), NÃO python3-opencv nem opencv-python:
+       o rastreamento do robô usa cv2.TrackerCSRT, que só existe no módulo
+       "tracking" do opencv_contrib. Ver README para instruções de instalação
+       e por que não pode coexistir com outras variantes do pacote opencv. -->
   <exec_depend>python3-yaml</exec_depend>
   <exec_depend>python3-fastapi</exec_depend>
   <exec_depend>python3-uvicorn</exec_depend>

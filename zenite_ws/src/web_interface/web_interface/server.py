@@ -2,8 +2,10 @@
 
 Um único WebSocket (/ws) por cliente transporta tudo:
   servidor -> cliente : frames JPEG (mensagens binárias) e JSON
-                        ({"type": "pose" | "status" | "goal_ack" | "error"})
-  cliente -> servidor : JSON ({"type": "goal" | "params" | "reload_homography"})
+                        ({"type": "pose" | "status" | "goal_ack" | "calibrate_ack" |
+                                  "locate_ack" | "error"})
+  cliente -> servidor : JSON ({"type": "goal" | "params" | "calibrate" |
+                                        "locate_robot" | "reset_tracking" | "reload_homography"})
 
 Todo o envio ao cliente é feito por uma única task (_stream_to_client), que
 drena uma fila asyncio de mensagens JSON e envia o frame/pose mais recentes —
@@ -93,7 +95,18 @@ def create_app(bridge: RosBridgeNode) -> FastAPI:
                 await out_queue.put({'type': 'calibrate_ack', 'homography': True})
             except Exception as e:
                 await out_queue.put({'type': 'error', 'message': str(e)})
-                
+
+        elif msg_type == 'locate_robot':
+            try:
+                roi = data['roi']
+                bridge.locate_robot(
+                    float(roi['x']), float(roi['y']), float(roi['width']), float(roi['height']))
+                await out_queue.put({'type': 'locate_ack'})
+            except Exception as e:
+                await out_queue.put({'type': 'error', 'message': str(e)})
+
+        elif msg_type == 'reset_tracking':
+            bridge.reset_tracking()
 
         elif msg_type == 'reload_homography':
             ok = bridge.try_load_homography()
