@@ -7,18 +7,26 @@ const noVideo = document.getElementById('no-video');
 const navButtons = Array.from(document.querySelectorAll('.navRow button[data-target]'));
 const tabSections = Array.from(document.querySelectorAll('main > section > div[id]'));
 const connBadge = document.getElementById('conn-badge');
+const camBadge = document.getElementById('cam-badge');
 const homogBadge = document.getElementById('homog-badge');
+const locBadge = document.getElementById('loc-badge');
 const poseValue = document.getElementById('pose-value');
+const initialValue = document.getElementById('initial-value');
 const goalValue = document.getElementById('goal-value');
+const lastGoalValue = document.getElementById('last-goal-value');
 const logList = document.getElementById('log');
 
 const rangeInputs = Array.from(document.querySelectorAll('.slider-row input[type="range"]'));
 
+const STALE_MS = 5000; // tempo sem frame/pose até marcar badge como desconectado
 
 let ws = null;
 let currentPose = null;   // {x, y, px?, py?}
+let initialPose = null;   // primeira pose recebida {x, y}
 let currentGoal = null;   // {x, y, px, py}
 let hasFrame = false;
+let lastFrameAt = 0;
+let lastPoseAt = 0;
 
 function setupSectionTabs() {
   const buttons = navButtons;
@@ -70,8 +78,6 @@ rangeInputs.forEach((range) => {
 
 document.addEventListener('DOMContentLoaded', setupSectionTabs);
 
-
-/*
 // ------------------------------------------------------------------ //
 // WebSocket
 // ------------------------------------------------------------------ //
@@ -103,20 +109,30 @@ function send(obj) {
   }
 }
 
+function formatMeters(p) {
+  return `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}) m`;
+}
+
 function handleJson(msg) {
   switch (msg.type) {
     case 'pose':
       currentPose = msg;
-      poseValue.textContent = `(${msg.x.toFixed(2)}, ${msg.y.toFixed(2)}) m`;
+      lastPoseAt = Date.now();
+      poseValue.textContent = formatMeters(msg);
+      if (!initialPose) {
+        initialPose = { x: msg.x, y: msg.y };
+        initialValue.textContent = formatMeters(initialPose);
+      }
       break;
     case 'status':
       setBadge(homogBadge, msg.homography,
         msg.homography ? 'Calibrado' : 'Sem calibração');
       break;
     case 'goal_ack':
+      if (currentGoal) lastGoalValue.textContent = formatMeters(currentGoal);
       currentGoal = msg;
-      goalValue.textContent = `(${msg.x.toFixed(2)}, ${msg.y.toFixed(2)}) m`;
-      addLog(`Alvo enviado: (${msg.x.toFixed(2)}, ${msg.y.toFixed(2)}) m`);
+      goalValue.textContent = formatMeters(msg);
+      addLog(`Alvo enviado: ${formatMeters(msg)}`);
       break;
     case 'error':
       addLog(msg.message, true);
@@ -144,6 +160,7 @@ async function drawFrame(blob) {
   ctx.drawImage(bitmap, 0, 0);
   bitmap.close();
 
+  lastFrameAt = Date.now();
   if (!hasFrame) {
     hasFrame = true;
     noVideo.classList.add('hidden');
@@ -157,10 +174,6 @@ function drawMarkers() {
   if (currentGoal) {
     drawCross(currentGoal.px, currentGoal.py, '#ff5566');
   }
-  // Pose atual do robô (telemetria) — verde
-  if (currentPose && currentPose.px !== undefined) {
-    drawCircle(currentPose.px, currentPose.py, '#5fd38d');
-  }
 }
 
 function drawCross(x, y, color) {
@@ -172,31 +185,30 @@ function drawCross(x, y, color) {
   ctx.stroke();
 }
 
-function drawCircle(x, y, color) {
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(x, y, 12, 0, 2 * Math.PI);
-  ctx.stroke();
+function framePoint(e) {
+  const rect = canvas.getBoundingClientRect();
+  return {
+    x: (e.clientX - rect.left) * (canvas.width / rect.width),
+    y: (e.clientY - rect.top) * (canvas.height / rect.height),
+  };
 }
 
 // Clique no vídeo -> alvo em coordenadas do frame original
 canvas.addEventListener('click', (e) => {
   if (!hasFrame) return;
-  const rect = canvas.getBoundingClientRect();
-  const x = (e.clientX - rect.left) * (canvas.width / rect.width);
-  const y = (e.clientY - rect.top) * (canvas.height / rect.height);
+  const { x, y } = framePoint(e);
   send({ type: 'goal', x, y });
 });
 
 // ------------------------------------------------------------------ //
 // Sliders (0-255 na UI -> 0.0-1.0 no ROS, como no interface_node)
+// Só brilho, saturação e matiz existem em image_params; os demais
+// sliders do layout ficam desativados no HTML.
 // ------------------------------------------------------------------ //
 
 const sliders = ['brightness', 'saturation', 'hue'].map((id) => ({
   id,
   input: document.getElementById(id),
-  label: document.getElementById(`${id}-value`),
 }));
 
 let paramsTimer = null;
@@ -209,34 +221,38 @@ function sendParams() {
 
 for (const s of sliders) {
   s.input.addEventListener('input', () => {
-    s.label.textContent = s.input.value;
     clearTimeout(paramsTimer);
     paramsTimer = setTimeout(sendParams, 100); // throttle
   });
 }
 
 // ------------------------------------------------------------------ //
-// Calibração / util
+// Util
 // ------------------------------------------------------------------ //
 
-document.getElementById('reload-homography').addEventListener('click', () => {
-  send({ type: 'reload_homography' });
-  addLog('Recarregando homografia…');
-});
-
-function setBadge(el, on, text) {
+function setBadge(el, ok, text) {
   el.textContent = text;
-  el.classList.toggle('on', on);
-  el.classList.toggle('off', !on);
+  el.classList.toggle('success', ok);
+  el.classList.toggle('error', !ok);
 }
 
 function addLog(text, isError = false) {
-  const li = document.createElement('li');
-  li.textContent = `${new Date().toLocaleTimeString()} — ${text}`;
-  if (isError) li.classList.add('error');
-  logList.prepend(li);
+  const row = document.createElement('div');
+  row.textContent = `${new Date().toLocaleTimeString()} — ${text}`;
+  if (isError) row.style.color = 'var(--color-red-400)';
+  logList.prepend(row);
   while (logList.children.length > 30) logList.removeChild(logList.lastChild);
 }
 
+// Badges de atividade recente (câmera / robô localizado)
+setInterval(() => {
+  const now = Date.now();
+
+  const camOk = hasFrame && (now - lastFrameAt) < STALE_MS;
+  setBadge(camBadge, camOk, camOk ? 'Câmera conectada' : 'Câmera desconectada');
+
+  const locOk = currentPose !== null && (now - lastPoseAt) < STALE_MS;
+  setBadge(locBadge, locOk, locOk ? 'Robô localizado' : 'Robô não localizado');
+}, 1000);
+
 connect();
- */

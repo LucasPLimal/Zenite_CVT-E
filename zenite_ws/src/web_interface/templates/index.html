@@ -11,8 +11,9 @@
 <body>
   <main>
     <section class="video-section">
-      <div>
+      <div class="canvas-wrap">
         <canvas id="video-canvas"></canvas>
+        <div id="no-video" class="no-video">Aguardando imagem da câmera…</div>
       </div>
       <div class="badges">
         <span id="conn-badge" class="error">Desconectado</span>
@@ -23,7 +24,6 @@
       <div class="console">
         <h2>Console</h2>
         <code id="log" class="log">
-          Hello World!
         </code>
       </div>
     </section>
@@ -97,32 +97,36 @@
         <div class="sectionTab">
           <h2>Ajustes da câmera</h2>
           <div class="slider-row">
-            <label for="brilho">Brilho</label>
-            <input type="range" id="brilho" min="0" max="255" value="100">
+            <label for="brightness">Brilho</label>
+            <input type="range" id="brightness" min="0" max="255" value="150">
           </div>
           <div class="slider-row">
             <label for="contraste">Contraste</label>
-            <input type="range" id="contraste" min="0" max="255" value="100">
+            <input type="range" id="contraste" min="0" max="255" value="100" disabled
+              title="Ainda não suportado pelo ROS (image_params)">
           </div>
           <div class="slider-row">
-            <label for="saturacao">Saturação</label>
-            <input type="range" id="saturacao" min="0" max="255" value="100">
+            <label for="saturation">Saturação</label>
+            <input type="range" id="saturation" min="0" max="255" value="172">
           </div>
           <div class="slider-row">
-            <label for="matiz">Matiz</label>
-            <input type="range" id="matiz" min="0" max="255" value="100">
+            <label for="hue">Matiz</label>
+            <input type="range" id="hue" min="0" max="255" value="255">
           </div>
           <div class="slider-row">
             <label for="exposicao">Exposição</label>
-            <input type="range" id="exposicao" min="0" max="255" value="100">
+            <input type="range" id="exposicao" min="0" max="255" value="100" disabled
+              title="Ainda não suportado pelo ROS (image_params)">
           </div>
           <div class="slider-row">
             <label for="ganho">Ganho</label>
-            <input type="range" id="ganho" min="0" max="255" value="100">
+            <input type="range" id="ganho" min="0" max="255" value="100" disabled
+              title="Ainda não suportado pelo ROS (image_params)">
           </div>
           <div class="slider-row">
             <label for="foco">Foco</label>
-            <input type="range" id="foco" min="0" max="255" value="100">
+            <input type="range" id="foco" min="0" max="255" value="100" disabled
+              title="Ainda não suportado pelo ROS (image_params)">
           </div>
         </div>
       </div>
@@ -132,23 +136,23 @@
           <h2>Informações de posição</h2>
           <div class="telemetry-line">
             <h6>Posição atual</h6>
-            <p>(0.24, 0.31) m</p>
+            <p id="pose-value">—</p>
           </div>
           <div class="telemetry-line">
             <h6>Posição inicial</h6>
-            <p>(0.24, 0.31) m</p>
+            <p id="initial-value">—</p>
           </div>
           <div class="telemetry-line">
             <h6>Posição alvo</h6>
-            <p>(0.24, 0.31) m</p>
+            <p id="goal-value">—</p>
           </div>
           <div class="telemetry-line">
             <h6>Último ponto alvo</h6>
-            <p>(0.24, 0.31) m</p>
+            <p id="last-goal-value">—</p>
           </div>
           <div class="telemetry-line">
             <h6>Área de calibragem</h6>
-            <p>(12, 920, -204, -80) px</p>
+            <p id="calib-area-value">—</p>
           </div>
         </div>
       </div>

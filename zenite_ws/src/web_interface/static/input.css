@@ -171,3 +171,43 @@ section>div {
 .telemetry-line>p {
   @apply text-sm font-semibold
 }
+
+.canvas-wrap {
+  position: relative;
+}
+
+.no-video {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 1rem;
+  font-size: 0.875rem;
+  color: var(--color-mauve-700);
+  pointer-events: none;
+}
+
+@media (prefers-color-scheme: dark) {
+  .no-video {
+    color: var(--color-mauve-300);
+  }
+}
+
+.no-video.hidden {
+  display: none;
+}
+
+.slider-row>input[type="range"]:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.slider-row>input[type="range"]:disabled::-webkit-slider-thumb {
+  cursor: not-allowed;
+}
+
+.slider-row>input[type="range"]:disabled::-moz-range-thumb {
+  cursor: not-allowed;
+}
