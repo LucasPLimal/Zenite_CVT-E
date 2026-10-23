@@ -12,6 +12,40 @@
   animation: 0.4s ease-in-out fadeIn;
 }
 
+.tab-panel:not(.hidden) {
+  animation: tabFadeIn 100ms ease-out both;
+}
+
+.tab-panel.tab-panel-leaving {
+  animation: tabFadeOut 100ms ease-in both;
+}
+
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes tabFadeOut {
+  from {
+    opacity: 1;
+  }
+
+  to {
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel:not(.hidden),
+  .tab-panel.tab-panel-leaving {
+    animation-duration: 0ms;
+  }
+}
 
 body {
   @apply bg-mauve-100 text-mauve-900 dark:bg-mauve-900 dark:text-mauve-100
@@ -33,10 +67,6 @@ section.video-section {
   @apply flex flex-col lg:w-2/3 gap-3
 }
 
-section>div {
-  @apply transition duration-150 ease-in-out transition-discrete
-}
-
 .buttonPrimary {
   @apply text-xs sm:text-sm flex flex-row w-max h-max justify-center rounded-lg py-2 px-3 gap-2 bg-rose-600 text-white font-medium;
   @apply transition-colors duration-300
@@ -44,6 +74,10 @@ section>div {
 
 .buttonPrimary:hover {
   @apply bg-rose-700 dark:bg-rose-500 cursor-pointer
+}
+
+.buttonPrimary:active {
+  @apply bg-rose-800 dark:bg-rose-400 cursor-pointer
 }
 
 .buttonIcon {
@@ -91,6 +125,10 @@ section>div {
   @apply bg-mauve-400 dark:bg-mauve-600 checked:bg-rose-500
 }
 
+.toggle>input:active {
+  @apply bg-mauve-500 dark:bg-mauve-500 checked:bg-rose-400
+}
+
 .toggle>label {
   @apply absolute top-0 left-0 w-6 h-6 bg-mauve-100 rounded-full shadow-sm transition-transform duration-300 peer-checked:translate-x-6 cursor-pointer
 }
@@ -109,6 +147,17 @@ section>div {
 
 .badges>span {
   @apply font-medium px-2.5 py-1.5 rounded-full text-xs sm:text-sm
+}
+
+.badges>span {
+  @apply font-medium px-2.5 py-1.5 rounded-full text-xs sm:text-sm;
+  transition: background-color 250ms ease, border-color 250ms ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .badges>span {
+    transition: none;
+  }
 }
 
 .badges>span.success {
@@ -150,6 +199,14 @@ section>div {
 
 .navRow>.buttonNav.selected:hover {
   @apply bg-mauve-300 dark:bg-mauve-700 cursor-pointer
+}
+
+.navRow>.buttonNav.selected:active {
+  @apply bg-mauve-400 dark:bg-mauve-600 cursor-pointer
+}
+
+.navRow>.buttonNav:active {
+  @apply bg-mauve-400 dark:bg-mauve-600 cursor-pointer
 }
 
 .sectionTab {

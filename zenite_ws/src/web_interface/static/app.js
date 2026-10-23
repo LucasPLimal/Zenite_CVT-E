@@ -62,16 +62,64 @@ function setupSectionTabs() {
     return;
   }
 
+  let transitionInProgress = false;
+  let queuedTargetId = null;
+
   function activateSection(targetId) {
+    const nextSection = sections.find((section) => section.id === targetId);
+    if (!nextSection) {
+      return;
+    }
+
     buttons.forEach((button) => {
       button.classList.toggle('selected', button.dataset.target === targetId);
     });
 
-    sections.forEach((section) => {
-      const isActive = section.id === targetId;
-      section.classList.toggle('block', isActive);
-      section.classList.toggle('hidden', !isActive);
-    });
+    if (transitionInProgress) {
+      queuedTargetId = targetId;
+      return;
+    }
+
+    const currentSection = sections.find((section) => !section.classList.contains('hidden'));
+    if (currentSection === nextSection) {
+      return;
+    }
+
+    const showSection = () => {
+      nextSection.classList.remove('hidden');
+      nextSection.classList.add('block');
+    };
+
+    if (!currentSection || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+      sections.forEach((section) => {
+        const isActive = section === nextSection;
+        section.classList.toggle('block', isActive);
+        section.classList.toggle('hidden', !isActive);
+      });
+      return;
+    }
+
+    transitionInProgress = true;
+    const finishFadeOut = (event) => {
+      if (event.target !== currentSection || event.animationName !== 'tabFadeOut') {
+        return;
+      }
+
+      currentSection.removeEventListener('animationend', finishFadeOut);
+      currentSection.classList.remove('tab-panel-leaving', 'block');
+      currentSection.classList.add('hidden');
+      showSection();
+      transitionInProgress = false;
+
+      if (queuedTargetId) {
+        const queuedTarget = queuedTargetId;
+        queuedTargetId = null;
+        activateSection(queuedTarget);
+      }
+    };
+
+    currentSection.addEventListener('animationend', finishFadeOut);
+    currentSection.classList.add('tab-panel-leaving');
   }
 
   buttons.forEach((button) => {
@@ -443,11 +491,7 @@ function exitCalibrationMode() {
   calibrationJustCompleted = false;
   canvas.classList.remove('calibrating');
   calibrateToggle.textContent = 'Calibrar ponto';
-  updateCalibrationStatus();
-}
-
-function updateCalibrationStatus() {
-  calibrationStatus.textContent = `Ponto ${calibrationPoints.length} de 4.`;
+  addLog(`Ponto ${calibrationPoints.length} de 4.`)
 }
 
 // Telemetria "Área de calibragem": caixa envolvente (x mín, y mín, x máx, y máx) em px.
