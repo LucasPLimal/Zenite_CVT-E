@@ -68,6 +68,11 @@ void setup() {
     Serial.begin(115200);
 
     // Inicializa Bluetooth Classic
+    /*caso seja usado mais de um rover, diferentes endereços MAC serão atribuidos a cada um, então para diferencia-los
+    cada um tem um nome no bt.begin()
+    zenitinho(rover 1): 00:4b:12:3c:74:ce
+    parnadiloJR(rover 2): 00:4b:12:3b:ff:52
+    Jerimum(rover 3): 00:4b:12:3e:72:b6*/
     if (!bt.begin("zenitinho")) {
         Serial.println("Erro ao iniciar Bluetooth!");
 
