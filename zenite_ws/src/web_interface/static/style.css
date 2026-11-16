@@ -14,13 +14,16 @@
     --color-green-200: oklch(92.5% 0.084 155.995);
     --color-green-400: oklch(79.2% 0.209 151.711);
     --color-green-600: oklch(62.7% 0.194 149.214);
+    --color-rose-400: oklch(71.2% 0.194 13.428);
     --color-rose-500: oklch(64.5% 0.246 16.439);
     --color-rose-600: oklch(58.6% 0.253 17.585);
     --color-rose-700: oklch(51.4% 0.222 16.935);
+    --color-rose-800: oklch(45.5% 0.188 13.697);
     --color-mauve-100: oklch(96% 0.003 325.6);
     --color-mauve-200: oklch(92.2% 0.005 325.62);
     --color-mauve-300: oklch(86.5% 0.012 325.68);
     --color-mauve-400: oklch(71.1% 0.019 323.02);
+    --color-mauve-500: oklch(54.2% 0.034 322.5);
     --color-mauve-600: oklch(43.5% 0.029 321.78);
     --color-mauve-700: oklch(36.4% 0.029 323.89);
     --color-mauve-800: oklch(26.3% 0.024 320.12);
@@ -38,7 +41,6 @@
     --font-weight-medium: 500;
     --font-weight-semibold: 600;
     --radius-lg: 0.5rem;
-    --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
     --default-transition-duration: 150ms;
     --default-transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
     --default-font-family: var(--font-sans);
@@ -215,6 +217,9 @@
   .flex-row {
     flex-direction: row;
   }
+  .flex-wrap {
+    flex-wrap: wrap;
+  }
   .items-center {
     align-items: center;
   }
@@ -233,6 +238,33 @@
 }
 ::view-transition-new(root) {
   animation: 0.4s ease-in-out fadeIn;
+}
+.tab-panel:not(.hidden) {
+  animation: tabFadeIn 100ms ease-out both;
+}
+.tab-panel.tab-panel-leaving {
+  animation: tabFadeOut 100ms ease-in both;
+}
+@keyframes tabFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes tabFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tab-panel:not(.hidden), .tab-panel.tab-panel-leaving {
+    animation-duration: 0ms;
+  }
 }
 body {
   background-color: var(--color-mauve-100);
@@ -280,16 +312,6 @@ section.video-section {
     width: calc(2 / 3 * 100%);
   }
 }
-section>div {
-  transition-property: color, background-color, border-color, outline-color, text-decoration-color, fill, stroke, --tw-gradient-from, --tw-gradient-via, --tw-gradient-to, opacity, box-shadow, transform, translate, scale, rotate, filter, -webkit-backdrop-filter, backdrop-filter, display, content-visibility, overlay, pointer-events;
-  transition-timing-function: var(--tw-ease, var(--default-transition-timing-function));
-  transition-duration: var(--tw-duration, var(--default-transition-duration));
-  transition-behavior: allow-discrete;
-  --tw-duration: 150ms;
-  transition-duration: 150ms;
-  --tw-ease: var(--ease-in-out);
-  transition-timing-function: var(--ease-in-out);
-}
 .buttonPrimary {
   display: flex;
   height: max-content;
@@ -321,6 +343,13 @@ section>div {
   background-color: var(--color-rose-700);
   @media (prefers-color-scheme: dark) {
     background-color: var(--color-rose-500);
+  }
+}
+.buttonPrimary:active {
+  cursor: pointer;
+  background-color: var(--color-rose-800);
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-rose-400);
   }
 }
 .buttonIcon {
@@ -421,6 +450,15 @@ section>div {
     background-color: var(--color-mauve-600);
   }
 }
+.toggle>input:active {
+  background-color: var(--color-mauve-500);
+  &:checked {
+    background-color: var(--color-rose-400);
+  }
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-mauve-500);
+  }
+}
 .toggle>label {
   position: absolute;
   top: 0px;
@@ -470,6 +508,10 @@ section>div {
   gap: calc(var(--spacing) * 2);
 }
 .badges>span {
+  @media (width >= 40rem) {
+    font-size: var(--text-sm);
+    line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
   border-radius: calc(infinity * 1px);
   padding-inline: calc(var(--spacing) * 2.5);
   padding-block: calc(var(--spacing) * 1.5);
@@ -480,6 +522,12 @@ section>div {
   @media (width >= 40rem) {
     font-size: var(--text-sm);
     line-height: var(--tw-leading, var(--text-sm--line-height));
+  }
+  transition: background-color 250ms ease, border-color 250ms ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .badges>span {
+    transition: none;
   }
 }
 .badges>span.success {
@@ -596,6 +644,20 @@ section>div {
     background-color: var(--color-mauve-700);
   }
 }
+.navRow>.buttonNav.selected:active {
+  cursor: pointer;
+  background-color: var(--color-mauve-400);
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-mauve-600);
+  }
+}
+.navRow>.buttonNav:active {
+  cursor: pointer;
+  background-color: var(--color-mauve-400);
+  @media (prefers-color-scheme: dark) {
+    background-color: var(--color-mauve-600);
+  }
+}
 .sectionTab {
   display: flex;
   height: auto;
@@ -640,7 +702,6 @@ section>div {
 .canvas-wrap {
   position: relative;
 }
-
 .no-video {
   position: absolute;
   inset: 0;
@@ -653,44 +714,32 @@ section>div {
   color: var(--color-mauve-700);
   pointer-events: none;
 }
-
 @media (prefers-color-scheme: dark) {
   .no-video {
     color: var(--color-mauve-300);
   }
 }
-
 .no-video.hidden {
   display: none;
 }
-
 .slider-row>input[type="range"]:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
-
 .slider-row>input[type="range"]:disabled::-webkit-slider-thumb {
   cursor: not-allowed;
 }
-
 .slider-row>input[type="range"]:disabled::-moz-range-thumb {
   cursor: not-allowed;
 }
-
-#video-canvas.calibrating,
-#video-canvas.locating {
+#video-canvas.calibrating, #video-canvas.locating {
   cursor: crosshair;
 }
-
-@property --tw-duration {
-  syntax: "*";
-  inherits: false;
-}
-@property --tw-ease {
-  syntax: "*";
-  inherits: false;
-}
 @property --tw-font-weight {
+  syntax: "*";
+  inherits: false;
+}
+@property --tw-duration {
   syntax: "*";
   inherits: false;
 }
@@ -782,9 +831,8 @@ section>div {
 @layer properties {
   @supports ((-webkit-hyphens: none) and (not (margin-trim: inline))) or ((-moz-orient: inline) and (not (color:rgb(from red r g b)))) {
     *, ::before, ::after, ::backdrop {
-      --tw-duration: initial;
-      --tw-ease: initial;
       --tw-font-weight: initial;
+      --tw-duration: initial;
       --tw-border-style: solid;
       --tw-shadow: 0 0 #0000;
       --tw-shadow-color: initial;

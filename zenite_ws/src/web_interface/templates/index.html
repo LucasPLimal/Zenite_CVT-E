@@ -6,6 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Zênite — Interface Web</title>
   <link rel="stylesheet" href="{{ url_for('static', path='style.css') }}">
+  <link rel="stylesheet" href="../static/style.css">
 </head>
 
 <body>
@@ -35,17 +36,14 @@
         <button type="button" class="buttonNav" data-target="telemetry">Telemetria</button>
       </div>
 
-      <div id="calibration" class="block flex-col gap-3">
+      <div id="calibration" class="tab-panel block flex-col gap-3">
         <div class="sectionTab">
           <h2>Calibração</h2>
           <div class="flex flex-row flex-wrap items-center gap-2">
-            <button id="calibrate-toggle" class="buttonPrimary">Calibrar ponto</button>
+            <button id="calibrate-toggle" class="buttonPrimary">Calibrar pontos</button>
             <button id="locate-robot-btn" class="buttonPrimary"
               title="Selecione o robô arrastando um retângulo sobre ele">Localizar robô</button>
             <button id="reload-homography" class="buttonPrimary">Recarregar homografia</button>
-          </div>
-          <div class="toggleLabel">
-            <p id="calibration-status">Ponto 0 de 4.</p>
           </div>
         </div>
         <div class="sectionTab">
@@ -98,7 +96,7 @@
         </div>
       </div>
 
-      <div id="camera" class="hidden flex-col gap-3">
+      <div id="camera" class="tab-panel hidden flex-col gap-3">
         <div class="sectionTab">
           <h2>Ajustes da câmera</h2>
           <div class="slider-row">
@@ -136,7 +134,7 @@
         </div>
       </div>
 
-      <div id="telemetry" class="hidden">
+      <div id="telemetry" class="tab-panel hidden">
         <div class="sectionTab">
           <h2>Informações de posição</h2>
           <div class="telemetry-line">
@@ -162,11 +160,11 @@
         </div>
       </div>
 
-
     </section>
   </main>
 
   <script src="{{ url_for('static', path='app.js') }}"></script>
+  <script src="../static/app.js"></script>
 </body>
 
 </html>
