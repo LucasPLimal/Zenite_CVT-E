@@ -38,7 +38,9 @@ public:
       serial_.open("/dev/rfcomm0");
 
       // Código utilizado para criar essa porta:
-      // sudo rfcomm bind /dev/rfcomm0 00:23:09:01:36:17
+      // sudo rfcomm bind /dev/rfcomm0 00:4B:12:3C:74:CE (Zenitinho)
+      // sudo rfcomm bind /dev/rfcomm0 00:4B:12:3E:72:B6 (Parnadilo JR)
+      // sudo rfcomm bind /dev/rfcomm0 (Jerimum)
 
       // Configura a taxa de transmissão (baud rate)
       serial_.set_option(serial_port_base::baud_rate(9600));

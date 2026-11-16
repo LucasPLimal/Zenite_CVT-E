@@ -4,6 +4,7 @@
 #include <cmath>
 #include <memory>
 #include <iostream>
+#include <string>
 #include <vector>
 #include <fstream>
 #include <algorithm>
@@ -18,15 +19,16 @@
 // Mensagem ROS utilizada para receber a posição desejada (ponto x, y, z).
 #include <geometry_msgs/msg/point.hpp>
 
-// Mensagem ROS utilizada para receber a posição atual como um vetor de
-// números de ponto flutuante (ex: [x, y] ou [x, y, theta]).
+// Mensagem ROS utilizada para receber a pose atual do robô como um vetor de
+// números de ponto flutuante: [x, y, theta] (x e y em metros, theta em radianos),
+// publicada pelo LocalizationNode em /robot_<id>/current_pose.
 #include <std_msgs/msg/float64_multi_array.hpp>
 
 // Permite usar literais de tempo como "10ms", "1s", etc.
 using namespace std::chrono_literals;
 
 // Classe responsável pelo controle de posição do robô.
-// Recebe a posição atual e a posição desejada, calcula o erro
+// Recebe a pose atual e a posição desejada, calcula o erro
 // através de um controlador PI (linear e angular) e converte
 // o resultado em velocidades para as rodas (cinemática diferencial).
 // Herda de rclcpp::Node para se tornar um nó ROS2.
@@ -44,7 +46,7 @@ public:
     // Lista de inicialização: define os parâmetros
     // físicos do robô e os ganhos do controlador PI.
     // ------------------------------------------------
-    L(0.16f),                // Distância entre rodas (ajustar conforme robô real)
+    L(0.15f),                // Distância entre rodas (ajustar conforme robô real)
     R(0.03f),                // Raio da roda (ajustar conforme robô real)
     dt(0.01f),               // Período de controle (10ms)
     kc_angular(5.0f),        // Ganho proporcional angular
@@ -69,10 +71,16 @@ public:
 
 
 
-    // Cria um subscriber para receber a posição atual do robô,
-    // normalmente enviada por um sistema de visão ou sensores externos.
+    // Parâmetro com o ID do robô controlado por este nó (o mesmo ID do
+    // marcador ArUco). Ele define de qual tópico a pose é lida.
+    const int robot_id = this->declare_parameter<int>("robot_id", 0);
+    const std::string pose_topic =
+      "/robot_" + std::to_string(robot_id) + "/current_pose";
+
+    // Cria um subscriber para receber a pose atual do robô
+    // ([x, y, theta]), enviada pelo LocalizationNode.
     current_pos_sub_ = this->create_subscription<std_msgs::msg::Float64MultiArray>(
-      "/current_position", 10,
+      pose_topic, 10,
       std::bind(&ControlNode::currentPosCallback, this, std::placeholders::_1));
 
 
@@ -96,59 +104,42 @@ public:
     // Apenas informa no terminal que o nó iniciou
     // e está aguardando os dados necessários.
     RCLCPP_INFO(this->get_logger(), "ControlNode iniciado");
+    RCLCPP_INFO(this->get_logger(), "Lendo a pose do robo %d em %s",
+                robot_id, pose_topic.c_str());
     RCLCPP_INFO(this->get_logger(), "Aguardando posição atual e posição desejada...");
   }
 
 private:
 
   // ======================================================
-  // CALLBACK DA POSIÇÃO ATUAL
-  // Executado sempre que uma nova leitura de posição
-  // (vinda de sensores/visão) chega.
+  // CALLBACK DA POSE ATUAL
+  // Executado sempre que uma nova pose [x, y, theta]
+  // (vinda do LocalizationNode) chega.
   // ======================================================
   void currentPosCallback(const std_msgs::msg::Float64MultiArray::SharedPtr msg)
   {
-    // Só processa se a mensagem tiver pelo menos x e y.
-    if (msg->data.size() >= 2) {
-
-      // Espera-se: [x, y, theta] ou apenas [x, y].
-      float new_x = static_cast<float>(msg->data[0]);
-      float new_y = static_cast<float>(msg->data[1]);
-      float new_theta = theta; // mantém o valor atual caso não seja fornecido
-
-
-
-      if (msg->data.size() >= 3) {
-        // Se o theta for fornecido diretamente na mensagem, usa esse valor.
-        new_theta = static_cast<float>(msg->data[2]);
-      } else if (has_current_pos) {
-        // Caso contrário, estima o ângulo de orientação (theta)
-        // a partir do deslocamento entre a posição anterior e a nova.
-        float dx = new_x - x;
-        float dy = new_y - y;
-        float dist = std::hypot(dx, dy);
-
-        // Só recalcula theta se o deslocamento for significativo,
-        // evitando ruído quando o robô está praticamente parado.
-        if (dist > 0.001f) { // Movimento significativo
-          new_theta = std::atan2(dy, dx);
-        }
-      }
-
-
-
-      // Atualiza o estado interno do robô com os novos valores.
-      x = new_x;
-      y = new_y;
-      theta = new_theta;
-      has_current_pos = true;
-
-
-
-      // Log de depuração com a posição e orientação atuais (em graus).
-      RCLCPP_DEBUG(this->get_logger(), "Pos atual: (%.3f, %.3f), θ=%.2f°", 
-                   x, y, theta * 180.0f / M_PI);
+    // A pose publicada pelo LocalizationNode tem sempre 3 valores:
+    // [x, y, theta]. Mensagens com outro tamanho são ignoradas.
+    if (msg->data.size() < 3) {
+      RCLCPP_WARN_THROTTLE(
+        this->get_logger(), *this->get_clock(), 2000,
+        "Pose invalida: esperado [x, y, theta], recebidos %zu valores",
+        msg->data.size());
+      return;
     }
+
+    // Atualiza o estado interno do robô com a pose recebida
+    // (x e y em metros, theta em radianos).
+    x = static_cast<float>(msg->data[0]);
+    y = static_cast<float>(msg->data[1]);
+    theta = static_cast<float>(msg->data[2]);
+    has_current_pos = true;
+
+
+
+    // Log de depuração com a posição e orientação atuais (em graus).
+    RCLCPP_DEBUG(this->get_logger(), "Pos atual: (%.3f, %.3f), θ=%.2f°",
+                 x, y, theta * 180.0f / M_PI);
   }
 
 
@@ -203,10 +194,14 @@ private:
 
     // Critério de parada: se estiver perto o suficiente do alvo,
     // para o robô e encerra o movimento.
-    if (distance < 0.10f) { // 5 cm de tolerância
+    if (distance < 0.05f) { // 5 cm de tolerância
       stopRobot();
       RCLCPP_INFO(this->get_logger(), "Alvo alcançado!");
       is_moving = false;
+
+      // Sai do loop: sem isso, o código abaixo calcularia e publicaria
+      // novas velocidades logo depois do comando de parada.
+      return;
     }
 
 
@@ -286,13 +281,29 @@ private:
     // **CINEMÁTICA DIFERENCIAL**
     // v = velocidade linear, ω = velocidade angular
     float v = u_linear;
-    float omega = u_angular;
+    float omega = -u_angular;  // TESTE: inverte o sentido da curva
 
     // Converte as velocidades linear e angular do robô em
     // velocidades individuais das rodas (direita e esquerda),
     // considerando a distância entre rodas (L) e o raio da roda (R).
     float v_direito = (2.0f * v + omega * L) / (2.0f * R);
     float v_esquerdo = (2.0f * v - omega * L) / (2.0f * R);
+
+
+
+    // ------------------------------------------------------
+    // TESTE (REMOVER QUANDO TROCAR AS PILHAS):
+    // velocidade mínima (em módulo) = 0xC = 12.
+    // Escala as duas rodas pelo mesmo fator, então a proporção
+    // entre elas (e portanto o direcionamento) continua igual.
+    // ------------------------------------------------------
+    constexpr float MIN_WHEEL_SPEED = 0xC;  // 12
+    float max_abs = std::max(std::fabs(v_direito), std::fabs(v_esquerdo));
+    if (max_abs > 0.0f && max_abs < MIN_WHEEL_SPEED) {
+      float scale = MIN_WHEEL_SPEED / max_abs;
+      v_direito  *= scale;
+      v_esquerdo *= scale;
+    }
 
 
 
@@ -303,7 +314,7 @@ private:
 
     // Log detalhado do estado atual do controlador,
     // útil para depuração e ajuste dos ganhos.
-    RCLCPP_INFO(this->get_logger(), 
+    RCLCPP_INFO(this->get_logger(),
       "Pos: (%.3f, %.3f) | Ref: (%.3f, %.3f) | Dist: %.3f | "
       "θ: %.1f° | θ_ref: %.1f° | Vd: %.2f | Ve: %.2f",
       x, y, x_ref, y_ref, distance,
@@ -372,13 +383,13 @@ private:
 
 
   // Posição desejada (alvo) recebida via subscriber.
-  float x_ref, y_ref;         // Posição desejada
+  float x_ref = 0.0f, y_ref = 0.0f;         // Posição desejada
 
 
 
   // Estados internos do controlador PID.
-  float e_linear_ant, e_angular_ant;  // Últimos erros calculados
-  float i_linear, i_angular;          // Valores acumulados dos integradores
+  float e_linear_ant = 0.0f, e_angular_ant = 0.0f;  // Últimos erros calculados
+  float i_linear = 0.0f, i_angular = 0.0f;          // Valores acumulados dos integradores
 
 
 

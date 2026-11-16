@@ -1,7 +1,14 @@
+#pragma once
+
+// Funções matemáticas (M_PI etc.).
+#include <cmath>
+
+// Utilitários da biblioteca padrão.
+#include <chrono>
+#include <map>
+#include <string>
+
 // Biblioteca principal do ROS2.
-//
-// Disponibiliza toda a infraestrutura necessária para criação
-// de nós, publishers, subscribers, timers, parâmetros e logs.
 #include <rclcpp/rclcpp.hpp>
 
 // Mensagem utilizada para transportar imagens entre os nós do ROS2.
@@ -9,107 +16,60 @@
 
 // Mensagem utilizada para enviar um vetor de números reais.
 //
-// Neste projeto ela transporta a posição atual do robô
-// no formato:
-// [x, y]
+// Para cada robô <id>, este nó publica um único tópico:
+// • /robot_<id>/current_pose -> [x, y, theta]
+//
+// x e y em metros e theta em radianos, no referencial do mundo
+// definido pela calibração (homografia).
 #include <std_msgs/msg/float64_multi_array.hpp>
 
-// Biblioteca responsável por converter imagens do ROS2
-// (sensor_msgs::msg::Image) para imagens OpenCV (cv::Mat)
-// e vice-versa.
+// Conversão de imagens ROS2 <-> OpenCV.
 #include <cv_bridge/cv_bridge.hpp>
 
 // Biblioteca principal do OpenCV.
-//
-// Disponibiliza todas as funções de processamento de imagens,
-// desenho, manipulação de pixels e interface gráfica.
 #include <opencv2/opencv.hpp>
 
-// Biblioteca responsável pelos algoritmos de rastreamento
-// (tracking) do OpenCV.
-//
-// Atualmente o Projeto Zênite utiliza o TrackerCSRT,
-// embora anteriormente tenha utilizado o KCF.
-#include <opencv2/tracking.hpp>
-
-// Biblioteca própria do Projeto Zênite.
-//
-// Contém a classe PixelConverter,
-// responsável por converter coordenadas em pixels
-// para coordenadas reais utilizando a homografia
-// calculada pelo CalibrationNode.
+// Conversão pixel -> metro (homografia do CalibrationNode).
 #include "zenite_utils/pixel_converter.hpp"
 
-// Permite utilizar literais de tempo,
-// como 50ms, 100ms, 1s etc.
+// Permite utilizar literais de tempo, como 50ms, 100ms, 1s etc.
 using namespace std::chrono_literals;
 
-// Declaração da classe LocalizationNode.
-//
 // Este nó é responsável por:
 //
 // • receber imagens da câmera;
-// • rastrear continuamente o robô;
-// • converter sua posição de pixels para metros;
-// • publicar essa posição para o ControlNode.
+// • (o main) detectar os marcadores ArUco sobre os robôs;
+// • converter posição e orientação de pixels para metros;
+// • publicar a pose (x, y, theta) de cada robô.
 class LocalizationNode : public rclcpp::Node {
 
 public:
 
-    // Construtor da classe.
-    //
-    // Executado automaticamente quando o nó é criado.
-    LocalizationNode()
+    using ArrayMsg = std_msgs::msg::Float64MultiArray;
+    using ArrayPub = rclcpp::Publisher<ArrayMsg>::SharedPtr;
 
-        // Inicializa a classe base do ROS2,
-        // definindo o nome do nó.
+    LocalizationNode()
         : Node("tracking_node"),
 
-          // Armazena o instante atual.
-          //
-          // Será utilizado para controlar
-          // a frequência máxima de publicação.
-          last_publish_time_(this->now()),
-
-          // Define um intervalo mínimo de
-          // 50 milissegundos entre publicações.
+          // Intervalo mínimo de 50 ms entre publicações (por robô).
           cooldown_duration_(50ms)
     {
 
-        // Cria um Subscriber responsável por receber
-        // continuamente as imagens publicadas
-        // pela AcquisitionNode.
+        // Subscriber das imagens publicadas pela AcquisitionNode.
         image_sub_ =
             this->create_subscription<
                 sensor_msgs::msg::Image>(
 
-                // Nome do tópico.
                 "camera_frame",
 
-                // Tamanho da fila.
                 10,
 
-                // Callback executado sempre que
-                // uma nova imagem chegar.
                 std::bind(
                     &LocalizationNode::imageCallback,
                     this,
                     std::placeholders::_1));
 
-        // Cria o Publisher responsável por enviar
-        // a posição atual do robô.
-        initial_pos_pub_ =
-            this->create_publisher<
-                std_msgs::msg::Float64MultiArray>(
-
-                // Nome do tópico.
-                "/current_position",
-
-                // Tamanho da fila.
-                10);
-
-        // Declara um parâmetro ROS2 contendo
-        // o caminho do arquivo YAML da homografia.
+        // Caminho do arquivo YAML da homografia.
         std::string yaml_path =
             this->declare_parameter<std::string>(
 
@@ -117,39 +77,27 @@ public:
 
                 "/tmp/scale.yaml");
 
-        // Carrega a homografia salva
-        // pelo CalibrationNode.
+        // Carrega a homografia salva pelo CalibrationNode.
         converter_.loadFromYaml(yaml_path);
 
-        // Informa no terminal que o nó
-        // foi iniciado corretamente.
         RCLCPP_INFO(
             this->get_logger(),
             "Localization_Node iniciado!");
     }
 
-    // Callback executado sempre que uma nova
-    // imagem chega da câmera.
+    // Callback executado sempre que uma nova imagem chega da câmera.
     void imageCallback(
         const sensor_msgs::msg::Image::SharedPtr msg)
     {
         try {
 
-            // Converte a imagem ROS2
-            // para OpenCV.
             cv_bridge::CvImagePtr cv_ptr =
                 cv_bridge::toCvCopy(msg, "bgr8");
 
-            // Verifica se a imagem é válida.
             if (!cv_ptr->image.empty())
-
-                // Atualiza a última imagem disponível.
                 latest_image_ = cv_ptr->image;
 
         }
-
-        // Captura possíveis erros
-        // durante a conversão.
         catch (const cv_bridge::Exception& e) {
 
             RCLCPP_ERROR(
@@ -159,107 +107,97 @@ public:
         }
     }
 
-    // Getter responsável por devolver
-    // a última imagem recebida.
-    //
-    // O main.cpp utiliza essa função
-    // para alimentar o algoritmo CSRT.
+    // Devolve a última imagem recebida.
     cv::Mat getLatestImage() const
     {
         return latest_image_;
     }
 
-    // Verifica se já existe
-    // alguma imagem válida armazenada.
+    // Verifica se já existe alguma imagem válida armazenada.
     bool hasImage() const
     {
         return !latest_image_.empty();
     }
 
-    // Publica a posição atual do robô.
+    // Publica a pose de um robô em /robot_<id>/current_pose.
     //
-    // Recebe como entrada um ponto
-    // já convertido para metros.
-    void publishPosition(
-        const cv::Point2f& world_point)
+    // id          : ID do marcador ArUco do robô.
+    // world_point : posição em metros (centro do marcador).
+    // theta       : orientação em radianos, no referencial do mundo.
+    //
+    // Cada robô tem o seu próprio cooldown, então um robô
+    // não bloqueia a publicação do outro.
+    void publishPose(
+        int id,
+        const cv::Point2f& world_point,
+        double theta)
     {
 
-        // Obtém o instante atual.
-        auto now = this->now();
+        // Primeira vez que este ID aparece: cria o publisher dele.
+        auto it = robots_.find(id);
+        if (it == robots_.end()) {
 
-        // Verifica se o tempo decorrido
-        // desde a última publicação é menor
-        // que o cooldown.
-        //
-        // Caso seja, simplesmente retorna,
-        // evitando publicar mensagens
-        // em excesso.
-        if (now - last_publish_time_
-            < cooldown_duration_) {
+            RobotPub r;
+            const std::string topic =
+                "/robot_" + std::to_string(id) + "/current_pose";
 
-            return;
+            r.pose = this->create_publisher<ArrayMsg>(topic, 10);
+            r.last = this->now() - cooldown_duration_;
+
+            it = robots_.emplace(id, std::move(r)).first;
+
+            RCLCPP_INFO(
+                this->get_logger(),
+                "Novo robo detectado: ID %d (topico %s)",
+                id,
+                topic.c_str());
         }
 
-        // Atualiza o instante
-        // da última publicação.
-        last_publish_time_ = now;
+        RobotPub& r = it->second;
 
-        // Cria uma mensagem
-        // Float64MultiArray.
-        std_msgs::msg::Float64MultiArray msg;
+        // Respeita o intervalo mínimo entre publicações deste robô.
+        const auto now = this->now();
+        if (now - r.last < cooldown_duration_)
+            return;
+        r.last = now;
 
-        // Armazena as coordenadas
-        // X e Y do robô.
-        msg.data = {
+        // Mensagem com a pose completa: [x, y, theta].
+        ArrayMsg pose_msg;
+        pose_msg.data = {world_point.x, world_point.y, theta};
 
+        r.pose->publish(pose_msg);
+
+        // No máximo 1 mensagem por segundo no terminal.
+        RCLCPP_INFO_THROTTLE(
+            this->get_logger(), *this->get_clock(), 1000,
+            "Pose enviada: ID %d (%.3f, %.3f) m, theta = %.1f graus",
+            id,
             world_point.x,
-
-            world_point.y
-        };
-
-        // Publica a posição atual.
-        initial_pos_pub_->publish(msg);
-
-        // Exibe no terminal
-        // a posição enviada.
-        RCLCPP_INFO(
-            this->get_logger(),
-
-            "Posicao enviada: (%.3f, %.3f) m",
-
-            world_point.x,
-
-            world_point.y);
+            world_point.y,
+            theta * 180.0 / M_PI);
     }
 
-    // Objeto responsável por realizar
-    // a conversão Pixel → Metro.
-    //
-    // Utiliza a homografia carregada
-    // do arquivo YAML.
+    // Objeto responsável pela conversão Pixel -> Metro.
     zenite_utils::PixelConverter converter_;
 
 private:
 
-    // Subscriber responsável por receber
-    // continuamente as imagens da câmera.
+    // Publisher e último instante de publicação de um robô.
+    struct RobotPub {
+        ArrayPub pose;
+        rclcpp::Time last;
+    };
+
+    // Subscriber das imagens da câmera.
     rclcpp::Subscription<
         sensor_msgs::msg::Image>::SharedPtr image_sub_;
 
-    // Publisher responsável por enviar
-    // a posição atual do robô.
-    rclcpp::Publisher<
-        std_msgs::msg::Float64MultiArray>::SharedPtr initial_pos_pub_;
+    // Um publisher por ID de robô.
+    std::map<int, RobotPub> robots_;
 
-    // Armazena sempre a última imagem
-    // recebida da câmera.
+    // Última imagem recebida da câmera.
     cv::Mat latest_image_;
 
-    // Instante da última publicação
-    // realizada.
-    rclcpp::Time last_publish_time_;
-
-    // Intervalo mínimo permitido
-    // entre duas publicações consecutivas.
+    // Intervalo mínimo entre duas publicações do mesmo robô.
     rclcpp::Duration cooldown_duration_;
 };

@@ -1,6 +1,14 @@
 // Inclui o arquivo de cabeçalho da classe LocalizationNode
 #include <localization_node/localization_node.hpp>
 
+// Inclui o detector de marcadores ArUco
+#include <localization_node/aruco_tracker.hpp>
+
+#include <cmath>
+#include <cstdio>
+#include <deque>
+#include <map>
+
 // Função principal do programa
 int main(int argc, char** argv)
 {
@@ -13,19 +21,29 @@ int main(int argc, char** argv)
     // Define a taxa de execução do loop principal em 30 Hz
     rclcpp::Rate rate(30);
 
-    // Cria um objeto do rastreador CSRT do OpenCV
-    // Esse algoritmo será responsável por acompanhar o robô entre os quadros da câmera
-    cv::Ptr<cv::Tracker> tracker = cv::TrackerCSRT::create();
+    // Detector dos marcadores ArUco
+    ArucoTracker tracker;
 
-    // Variável que armazenará a região de interesse (ROI) onde está o robô
-    cv::Rect2d roi;
+    // Histórico das posições de cada robô (por ID),
+    // usado apenas para desenhar a trajetória na tela.
+    // Guarda no máximo kMaxTrajetoria pontos por robô.
+    constexpr size_t kMaxTrajetoria = 500;
+    std::map<int, std::deque<cv::Point>> trajetorias;
 
-    // Indica se o rastreador já foi inicializado
-    bool inicializado = false;
+    // Cores usadas para diferenciar os robôs (BGR), escolhidas pelo ID.
+    const cv::Scalar cores[] = {
+        cv::Scalar(0, 255, 0),     // verde
+        cv::Scalar(0, 0, 255),     // vermelho
+        cv::Scalar(255, 0, 0),     // azul
+        cv::Scalar(0, 255, 255),   // amarelo
+        cv::Scalar(255, 0, 255),   // magenta
+        cv::Scalar(255, 255, 0)    // ciano
+    };
 
-    // Vetor utilizado para armazenar o histórico das posições do robô
-    // Serve apenas para desenhar a trajetória na tela
-    std::vector<cv::Point> trajetoria;
+    // Converte Point2f em Point (inteiro) para desenhar.
+    auto P = [](const cv::Point2f& p) {
+        return cv::Point(cvRound(p.x), cvRound(p.y));
+    };
 
     // Loop principal do programa
     while (rclcpp::ok()) {
@@ -43,90 +61,108 @@ int main(int argc, char** argv)
         cv::Mat frame = node->getLatestImage();
 
         // Caso a imagem esteja vazia, pula esta iteração
-        if (frame.empty()) continue;
+        if (frame.empty()) {
+            rate.sleep();
+            continue;
+        }
 
-        // Verifica se o rastreador ainda não foi inicializado
-        if (!inicializado) {
+        // Procura os marcadores no frame original (sem desenhos)
+        // e mede quanto tempo a detecção levou
+        cv::TickMeter cronometro;
+        cronometro.start();
+        const auto deteccoes = tracker.detect(frame);
+        cronometro.stop();
 
-            // Permite ao usuário selecionar manualmente o robô na primeira imagem
-            roi = cv::selectROI("Selecione o carrinho", frame);
+        // Os desenhos vão numa cópia, para não atrapalhar a detecção
+        cv::Mat tela = frame.clone();
 
-            // Verifica se foi realmente selecionada uma região válida
-            if (roi.width > 0 && roi.height > 0) {
+        if (!deteccoes.empty()) {
 
-                // Inicializa o rastreador utilizando a ROI escolhida
-                tracker->init(frame, roi);
+            // Linha de texto atual (para listar um robô por linha)
+            int linha = 0;
 
-                // Marca que o rastreador já está pronto para funcionar
-                inicializado = true;
+            for (const auto& d : deteccoes) {
 
-                // Fecha a janela de seleção
-                cv::destroyWindow("Selecione o carrinho");
+                const cv::Scalar cor = cores[d.id % 6];
 
-                // Exibe mensagem informando que o rastreamento começou
-                RCLCPP_INFO(node->get_logger(), "Rastreamento inicializado.");
+                // Desenha o contorno do marcador
+                for (int i = 0; i < 4; ++i)
+                    cv::line(tela,
+                             P(d.corners[i]),
+                             P(d.corners[(i + 1) % 4]),
+                             cor, 2);
+
+                // Desenha a direção da frente (centro -> frente)
+                cv::arrowedLine(tela, P(d.center), P(d.front),
+                                cv::Scalar(0, 0, 255), 2);
+
+                // Escreve o ID ao lado do marcador
+                char id_txt[16];
+                std::snprintf(id_txt, sizeof(id_txt), "ID %d", d.id);
+                cv::putText(tela, id_txt,
+                            P(d.center) + cv::Point(10, -10),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.6, cor, 2);
+
+                // Adiciona o centro ao histórico da trajetória deste robô
+                auto& traj = trajetorias[d.id];
+                traj.push_back(P(d.center));
+                if (traj.size() > kMaxTrajetoria) traj.pop_front();
+
+                // Desenha a trajetória percorrida
+                for (size_t i = 1; i < traj.size(); ++i)
+                    cv::line(tela, traj[i - 1], traj[i], cor, 2);
+
+                // Converte centro e frente de pixels para metros
+                // utilizando a homografia calculada no CalibrationNode
+                cv::Point2f centro_m = node->converter_.pixelToMeter(d.center);
+                cv::Point2f frente_m = node->converter_.pixelToMeter(d.front);
+
+                // Orientação no referencial do mundo:
+                // ângulo do vetor centro -> frente, em radianos
+                const double theta = std::atan2(frente_m.y - centro_m.y,
+                                                frente_m.x - centro_m.x);
+
+                // Publica a pose do robô (com cooldown próprio por ID)
+                node->publishPose(d.id, centro_m, theta);
+
+                // Mostra o ângulo estimado na imagem, uma linha por robô
+                char texto[64];
+                std::snprintf(texto, sizeof(texto),
+                              "ID %d: theta = %.1f graus",
+                              d.id, theta * 180.0 / M_PI);
+                cv::putText(tela, texto,
+                            cv::Point(50, 50 + 30 * linha),
+                            cv::FONT_HERSHEY_SIMPLEX, 0.75, cor, 2);
+                ++linha;
             }
+
+            // Imprime no terminal, no máximo 1 vez por segundo:
+            // quantos marcadores foram vistos e o tempo de detecção
+            RCLCPP_INFO_THROTTLE(
+                node->get_logger(), *node->get_clock(), 1000,
+                "Marcadores detectados: %zu, deteccao=%.2f ms",
+                deteccoes.size(), cronometro.getTimeMilli());
         }
         else {
 
-            // Variável que receberá a nova posição calculada pelo CSRT
-            cv::Rect roi_atual;
+            // Nenhum marcador encontrado:
+            // avisa no terminal (no máximo 1 vez por segundo)
+            RCLCPP_WARN_THROTTLE(
+                node->get_logger(), *node->get_clock(), 1000,
+                "Nenhum marcador encontrado");
 
-            // Atualiza o rastreador utilizando o frame atual
-            // Retorna true caso consiga localizar o robô
-            bool sucesso = tracker->update(frame, roi_atual);
-
-            // Se o rastreamento foi bem sucedido
-            if (sucesso) {
-
-                // Atualiza a ROI armazenada
-                roi = roi_atual;
-
-                // Desenha um retângulo verde ao redor do robô
-                cv::rectangle(frame, roi, cv::Scalar(0, 255, 0), 2);
-
-                // Calcula o centro da ROI
-                // Esse será considerado a posição do robô na imagem
-                cv::Point2f centro(
-                    roi.x + roi.width / 2.0,
-                    roi.y + roi.height / 2.0);
-
-                // Adiciona esse ponto ao histórico da trajetória
-                trajetoria.push_back(centro);
-
-                // Desenha toda a trajetória percorrida pelo robô
-                for (size_t i = 1; i < trajetoria.size(); ++i)
-                    cv::line(frame,
-                             trajetoria[i - 1],
-                             trajetoria[i],
-                             cv::Scalar(255, 0, 0),
-                             2);
-
-                // Converte a posição em pixels para coordenadas reais em metros
-                // utilizando a homografia calculada no CalibrationNode
-                cv::Point2f world_point = node->converter_.pixelToMeter(centro);
-
-                // Publica a posição do robô no tópico ROS
-                // A própria função já possui um cooldown para evitar excesso de mensagens
-                node->publishPosition(world_point);
-
-            }
-            else {
-
-                // Caso o rastreador perca o robô,
-                // exibe uma mensagem em vermelho na imagem
-                cv::putText(frame,
-                            "Falha no rastreamento",
-                            cv::Point(50, 50),
-                            cv::FONT_HERSHEY_SIMPLEX,
-                            0.75,
-                            cv::Scalar(0, 0, 255),
-                            2);
-            }
+            // e exibe uma mensagem em vermelho na imagem
+            cv::putText(tela,
+                        "Nenhum marcador encontrado",
+                        cv::Point(50, 50),
+                        cv::FONT_HERSHEY_SIMPLEX,
+                        0.75,
+                        cv::Scalar(0, 0, 255),
+                        2);
         }
 
         // Exibe a imagem com todos os desenhos feitos
-        cv::imshow("Rastreamento do Carrinho", frame);
+        cv::imshow("Rastreamento dos Carrinhos", tela);
 
         // Aguarda aproximadamente 30 ms
         // Se o usuário pressionar ESC (27), encerra o programa
