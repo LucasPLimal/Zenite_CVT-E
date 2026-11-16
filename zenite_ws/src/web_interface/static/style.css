@@ -732,7 +732,7 @@ section.video-section {
 .slider-row>input[type="range"]:disabled::-moz-range-thumb {
   cursor: not-allowed;
 }
-#video-canvas.calibrating, #video-canvas.locating {
+#video-canvas.calibrating {
   cursor: crosshair;
 }
 @property --tw-font-weight {

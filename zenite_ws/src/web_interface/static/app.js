@@ -29,7 +29,6 @@ const calibrateToggle = document.getElementById('calibrate-toggle');
 const switchPont = document.getElementById('switchPont');
 const switchLoc = document.getElementById('switchLoc');
 const switchPerc = document.getElementById('switchPerc');
-const locateBtn = document.getElementById('locate-robot-btn');
 
 const rangeInputs = Array.from(document.querySelectorAll('.slider-row input[type="range"]'));
 
@@ -65,13 +64,6 @@ let calibrationJustCompleted = false; // true entre o 4º clique e o fim do CALI
 let lastCalibrationPoints = null;     // pontos da última calibração concluída
 let calibrationHoldTimer = null;
 
-// Localizar robô: seleção por marquee (arraste), equivalente ao cv::selectROI
-// do localization_node — inicializa o CSRT no backend.
-let locating = false;   // aguardando o arraste
-let tracking = false;   // rastreamento ativo no backend
-let dragging = false;
-let marqueeStart = null;   // {x, y} em coordenadas do frame
-let marqueeCurrent = null;
 
 function setupSectionTabs() {
   const buttons = navButtons;
@@ -239,11 +231,6 @@ function handleJson(msg) {
       goalValue.textContent = formatMeters(msg);
       addLog(`Alvo enviado: ${formatMeters(msg)}`);
       break;
-    case 'locate_ack':
-      tracking = true;
-      exitLocateMode();
-      addLog('Robô localizado — rastreamento iniciado.');
-      break;
     case 'calibrate_ack':
       // O overlay verde já está visível desde o 4º clique e some sozinho
       // após CALIBRATION_HOLD_MS (ver finishCalibrationHold).
@@ -257,10 +244,6 @@ function handleJson(msg) {
         clearTimeout(calibrationHoldTimer);
         calibrationJustCompleted = false;
         calibrationPoints = [];
-      }
-      if (locating) {
-        dragging = false;
-        marqueeStart = marqueeCurrent = null;
       }
       break;
   }
@@ -318,34 +301,6 @@ function drawMarkers() {
   } else if (!calibrating && switchPont.checked && lastCalibrationPoints) {
     drawCalibrationOverlay(lastCalibrationPoints, false);
   }
-
-  // Seleção do robô por marquee — só durante o arraste
-  if (locating && dragging && marqueeStart && marqueeCurrent) {
-    drawMarquee(normalizedRect(marqueeStart, marqueeCurrent));
-  }
-}
-
-function normalizedRect(a, b) {
-  return {
-    x: Math.min(a.x, b.x),
-    y: Math.min(a.y, b.y),
-    width: Math.abs(b.x - a.x),
-    height: Math.abs(b.y - a.y),
-  };
-}
-
-// Retângulo da marquee com cruz inscrita (+) que acompanha o formato.
-function drawMarquee(rect) {
-  ctx.strokeStyle = '#22d3ee';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(rect.x, rect.y, rect.width, rect.height);
-
-  const cx = rect.x + rect.width / 2;
-  const cy = rect.y + rect.height / 2;
-  ctx.beginPath();
-  ctx.moveTo(rect.x, cy); ctx.lineTo(rect.x + rect.width, cy);
-  ctx.moveTo(cx, rect.y); ctx.lineTo(cx, rect.y + rect.height);
-  ctx.stroke();
 }
 
 function drawTrail(points, color) {
@@ -405,9 +360,8 @@ function framePoint(e) {
 }
 
 // Clique no vídeo -> alvo (modo normal) ou ponto de calibração (modo calibração).
-// No modo "Localizar robô" o clique não faz nada: a seleção é por arraste.
 canvas.addEventListener('click', (e) => {
-  if (!hasFrame || locating) return;
+  if (!hasFrame) return;
   const { x, y } = framePoint(e);
 
   if (calibrating) {
@@ -425,33 +379,6 @@ canvas.addEventListener('click', (e) => {
   }
 
   send({ type: 'goal', x, y });
-});
-
-// Marquee: mousedown inicia, mousemove atualiza, mouseup envia o ROI.
-canvas.addEventListener('mousedown', (e) => {
-  if (!locating || !hasFrame) return;
-  e.preventDefault();
-  dragging = true;
-  marqueeStart = framePoint(e);
-  marqueeCurrent = marqueeStart;
-});
-
-canvas.addEventListener('mousemove', (e) => {
-  if (!locating || !dragging) return;
-  marqueeCurrent = framePoint(e);
-  drawMarkers(); // redesenho imediato para feedback fluido
-});
-
-canvas.addEventListener('mouseup', (e) => {
-  if (!locating || !dragging) return;
-  dragging = false;
-  const rect = normalizedRect(marqueeStart, framePoint(e));
-  marqueeStart = marqueeCurrent = null;
-
-  if (rect.width < 5 || rect.height < 5) return; // clique acidental: tenta de novo
-
-  send({ type: 'locate_robot', roi: rect });
-  addLog('Localizando robô…');
 });
 
 // ------------------------------------------------------------------ //
@@ -494,7 +421,6 @@ calibrateToggle.addEventListener('click', () => {
     exitCalibrationMode();
     return;
   }
-  exitLocateMode();
   calibrating = true;
   calibrationPoints = [];
   canvas.classList.add('calibrating');
@@ -527,42 +453,6 @@ function updateCalibrationArea() {
   const f = (v) => Math.round(v);
   calibAreaValue.textContent =
     `(${f(Math.min(...xs))}, ${f(Math.min(...ys))}, ${f(Math.max(...xs))}, ${f(Math.max(...ys))}) px`;
-}
-
-// Botão "Localizar robô": idle -> selecionando (cancelável) -> rastreando
-// (o mesmo botão passa a parar o rastreamento).
-locateBtn.addEventListener('click', () => {
-  if (tracking) {
-    stopTracking();
-  } else if (locating) {
-    exitLocateMode();
-  } else {
-    exitCalibrationMode();
-    locating = true;
-    canvas.classList.add('locating');
-    locateBtn.textContent = 'Cancelar seleção';
-    addLog('Selecione o robô arrastando um retângulo sobre ele.');
-  }
-});
-
-function exitLocateMode() {
-  locating = false;
-  dragging = false;
-  marqueeStart = marqueeCurrent = null;
-  canvas.classList.remove('locating');
-  locateBtn.textContent = tracking ? 'Parar rastreamento' : 'Localizar robô';
-}
-
-function stopTracking() {
-  send({ type: 'reset_tracking' });
-  tracking = false;
-  currentPose = null;
-  initialPose = null;
-  poseTrail = [];
-  poseValue.textContent = '—';
-  initialValue.textContent = '—';
-  exitLocateMode();
-  addLog('Rastreamento parado.');
 }
 
 // ------------------------------------------------------------------ //

@@ -269,8 +269,7 @@ section.video-section {
   cursor: not-allowed;
 }
 
-#video-canvas.calibrating,
-#video-canvas.locating {
+#video-canvas.calibrating {
   cursor: crosshair;
 }
 

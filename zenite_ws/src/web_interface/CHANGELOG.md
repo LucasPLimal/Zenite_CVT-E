@@ -32,6 +32,11 @@ back-end (`feature/calibration_node`), sobre `origin/main`.
 - `.gitignore`: ignora `venv/`, `__pycache__/`, `*.pyc` e `node_modules/`.
   O `venv` e os caches deixam de ser versionados.
 
+### Removido
+- Rastreamento manual por CSRT e botão "Localizar robô" (conflitava com o
+  rastreamento ArUco do `localization_node`). Recuperável pelo histórico
+  (`6ba8132`, `be8f3fd`). `package.xml` volta a depender de `python3-opencv`.
+
 ### Corrigido
 - `index.html` carregava `style.css` e `app.js` duas vezes.
 - Calibração quebrada pelo merge do `dev` (função e elemento de status
