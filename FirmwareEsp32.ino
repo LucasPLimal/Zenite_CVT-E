@@ -6,6 +6,27 @@
 
 BluetoothSerial bt;
 
+// Alteração feita por Danilo: nome único de cada robô. É o nome anunciado no
+// Bluetooth e também o que o robô informa ao servidor ao conectar. Troque esta
+// linha em cada robô (zenitinho, parnadiloJR, Jerimum). O nome deve estar no
+// cadastro do servidor (robots.yaml).
+const char* ROBOT_NAME = "zenitinho";
+
+// Alteração feita por Danilo: apresentação enviada ao servidor logo após a
+// conexão, no formato "ZENIT,<nome>\n". Serve para o servidor confirmar que o
+// dispositivo conectado é um robô. O envio é feito pelo loop(), não pelo
+// callback do Bluetooth, e espera um instante para o servidor abrir o canal.
+const unsigned long HELLO_DELAY = 300;
+volatile bool helloPending = false;
+volatile unsigned long helloDueTime = 0;
+
+void onBtEvent(esp_spp_cb_event_t event, esp_spp_cb_param_t* param) {
+    if (event == ESP_SPP_SRV_OPEN_EVT) {
+        helloDueTime = millis() + HELLO_DELAY;
+        helloPending = true;
+    }
+}
+
 
 // ============================================================================
 //                       PINOS DO DRIVER L298N
@@ -73,7 +94,10 @@ void setup() {
     zenitinho(rover 1): 00:4b:12:3c:74:ce
     parnadiloJR(rover 2): 00:4b:12:3b:ff:52
     Jerimum(rover 3): 00:4b:12:3e:72:b6*/
-    if (!bt.begin("zenitinho")) {
+    // Alteração feita por Danilo: registra o callback de conexão e usa ROBOT_NAME.
+    bt.register_callback(onBtEvent);
+
+    if (!bt.begin(ROBOT_NAME)) {
         Serial.println("Erro ao iniciar Bluetooth!");
 
         while (true) {
@@ -82,7 +106,8 @@ void setup() {
     }
 
     Serial.println("Bluetooth iniciado!");
-    Serial.println("Dispositivo: zenitinho");
+    Serial.print("Dispositivo: ");
+    Serial.println(ROBOT_NAME);
 
     // Configura pinos de direção
     pinMode(IN1, OUTPUT);
@@ -109,6 +134,18 @@ void setup() {
 // ============================================================================
 
 void loop() {
+
+    // Alteração feita por Danilo: envia a apresentação "ZENIT,<nome>" ao servidor
+    // depois que uma conexão é aberta (ver onBtEvent).
+    if (helloPending && (long)(millis() - helloDueTime) >= 0) {
+        helloPending = false;
+
+        if (bt.hasClient()) {
+            idx = 0;  // descarta bytes parciais de uma conexão anterior
+            bt.print(String("ZENIT,") + ROBOT_NAME + "\n");
+            Serial.println("Apresentação enviada ao servidor");
+        }
+    }
 
     // =========================================================================
     //                   LEITURA NÃO BLOQUEANTE VIA BLUETOOTH
