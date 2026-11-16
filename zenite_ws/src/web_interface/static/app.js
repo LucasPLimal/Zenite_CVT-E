@@ -17,7 +17,6 @@ const lastGoalValue = document.getElementById('last-goal-value');
 const calibAreaValue = document.getElementById('calib-area-value');
 const logList = document.getElementById('log');
 const calibrateToggle = document.getElementById('calibrate-toggle');
-const calibrationStatus = document.getElementById('calibration-status');
 const switchPont = document.getElementById('switchPont');
 const switchLoc = document.getElementById('switchLoc');
 const switchPerc = document.getElementById('switchPerc');
@@ -230,7 +229,6 @@ function handleJson(msg) {
         clearTimeout(calibrationHoldTimer);
         calibrationJustCompleted = false;
         calibrationPoints = [];
-        updateCalibrationStatus();
       }
       if (locating) {
         dragging = false;
@@ -387,7 +385,7 @@ canvas.addEventListener('click', (e) => {
   if (calibrating) {
     if (calibrationPoints.length >= 4) return; // aguardando o overlay verde sumir
     calibrationPoints.push({ x, y });
-    updateCalibrationStatus();
+    addLog(`Ponto ${calibrationPoints.length} de 4.`);
 
     if (calibrationPoints.length === 4) {
       calibrationJustCompleted = true;
@@ -473,7 +471,6 @@ calibrateToggle.addEventListener('click', () => {
   calibrationPoints = [];
   canvas.classList.add('calibrating');
   calibrateToggle.textContent = 'Cancelar calibração';
-  updateCalibrationStatus();
   addLog('Calibração iniciada: clique nos 4 cantos da arena.');
 });
 
@@ -490,7 +487,7 @@ function exitCalibrationMode() {
   calibrationPoints = [];
   calibrationJustCompleted = false;
   canvas.classList.remove('calibrating');
-  calibrateToggle.textContent = 'Calibrar ponto';
+  calibrateToggle.textContent = 'Calibrar pontos';
   addLog(`Ponto ${calibrationPoints.length} de 4.`)
 }
 
