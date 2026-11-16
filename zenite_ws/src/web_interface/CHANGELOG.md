@@ -18,6 +18,14 @@ back-end (`feature/calibration_node`), sobre `origin/main`.
   alvo, último alvo e área de calibragem).
 - Botão "Recarregar homografia" na seção de calibração.
 
+- Tela de escolha de robô (multiusuário): cartões por robô com status,
+  botão Conectar, barra "Você está controlando", Trocar de robô e
+  "Tornar todos os robôs livres" (qualquer usuário, fase de testes).
+  Só aparece quando o servidor envia a lista de robôs; o back-end
+  multiusuário ainda não existe.
+- Integração da branch `dev` do Gustavo (animações das abas).
+- `acquisition_node`: parâmetro `video_index` para escolher a câmera.
+
 ### Alterado
 - `package.xml`: removida a dependência `python3-opencv`; o CSRT exige
   `opencv-contrib` (ver README).
@@ -26,6 +34,8 @@ back-end (`feature/calibration_node`), sobre `origin/main`.
 
 ### Corrigido
 - `index.html` carregava `style.css` e `app.js` duas vezes.
+- Calibração quebrada pelo merge do `dev` (função e elemento de status
+  removidos); o progresso agora aparece no console.
 
 ### Decisões e limitações conhecidas
 - Contraste, exposição, ganho e foco aparecem desativados: `ImageParams` só
