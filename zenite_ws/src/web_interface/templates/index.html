@@ -9,8 +9,35 @@
 </head>
 
 <body>
-  <main>
+  <!-- Tela de escolha de robô (multiusuário). Só é exibida quando o servidor
+       envia a lista de robôs ({type: "robots"}) e o usuário ainda não tem um. -->
+  <section id="robot-select" class="robot-select hidden" aria-labelledby="robot-select-title">
+    <div class="robot-select-header">
+      <h1 id="robot-select-title">Escolha seu robô</h1>
+      <p>Selecione um robô livre para controlar. Cada robô só pode ser usado por uma pessoa por vez.</p>
+    </div>
+
+    <div id="robot-grid" class="robot-grid" aria-live="polite"></div>
+
+    <p id="robot-empty" class="robot-empty hidden">
+      Nenhum robô disponível. Aguardando os robôs conectarem ao Bluetooth do servidor…
+    </p>
+
+    <div class="robot-select-footer">
+      <span id="robot-count" class="robot-count">0 robôs · 0 livres</span>
+      <button type="button" id="release-all-btn" class="buttonSecondary">Tornar todos os robôs livres</button>
+    </div>
+  </section>
+
+  <main id="control-main">
     <section class="video-section">
+      <div id="robot-bar" class="robot-bar hidden">
+        <div class="robot-bar-info">
+          <span class="robot-dot" aria-hidden="true"></span>
+          <span>Você está controlando <strong id="robot-bar-name">—</strong></span>
+        </div>
+        <button type="button" id="change-robot-btn" class="buttonSecondary">Trocar de robô</button>
+      </div>
       <div class="canvas-wrap">
         <canvas id="video-canvas"></canvas>
         <div id="no-video" class="no-video">Aguardando imagem da câmera…</div>

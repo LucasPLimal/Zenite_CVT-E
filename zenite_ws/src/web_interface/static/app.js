@@ -16,6 +16,15 @@ const goalValue = document.getElementById('goal-value');
 const lastGoalValue = document.getElementById('last-goal-value');
 const calibAreaValue = document.getElementById('calib-area-value');
 const logList = document.getElementById('log');
+const robotSelect = document.getElementById('robot-select');
+const robotGrid = document.getElementById('robot-grid');
+const robotEmpty = document.getElementById('robot-empty');
+const robotCount = document.getElementById('robot-count');
+const releaseAllBtn = document.getElementById('release-all-btn');
+const robotBar = document.getElementById('robot-bar');
+const robotBarName = document.getElementById('robot-bar-name');
+const changeRobotBtn = document.getElementById('change-robot-btn');
+const controlMain = document.getElementById('control-main');
 const calibrateToggle = document.getElementById('calibrate-toggle');
 const switchPont = document.getElementById('switchPont');
 const switchLoc = document.getElementById('switchLoc');
@@ -24,6 +33,10 @@ const locateBtn = document.getElementById('locate-robot-btn');
 
 const rangeInputs = Array.from(document.querySelectorAll('.slider-row input[type="range"]'));
 
+const MAX_ROBOTS = 8;            // limite de robôs na lista
+const RELEASE_CONFIRM_MS = 4000; // tempo para confirmar "tornar todos livres"
+// Cores por ID (id % 6), na mesma ordem usadas pelo localization_node.
+const ROBOT_COLORS = ['#22c55e', '#ef4444', '#3b82f6', '#eab308', '#d946ef', '#06b6d4'];
 const STALE_MS = 5000; // tempo sem frame/pose até marcar badge como desconectado
 const TRAIL_MAX = 80;  // pontos guardados no rastro de percurso
 const CALIBRATION_HOLD_MS = 1000; // tempo que os pontos ficam verdes após o 4º clique
@@ -35,6 +48,13 @@ let currentGoal = null;   // {x, y, px, py}
 let hasFrame = false;
 let lastFrameAt = 0;
 let lastPoseAt = 0;
+// Multiusuário: a tela de escolha só aparece quando o servidor envia a lista
+// de robôs. Enquanto isso não acontece, a interface funciona como antes.
+let multiUser = false;
+let robots = [];          // [{id, name, status: 'free'|'busy'|'mine', bluetooth, marker}]
+let myRobotId = null;     // robô reservado para esta sessão
+let pendingRobotId = null; // clique em "Conectar" aguardando a resposta do servidor
+let releaseAllTimer = null;
 let poseTrail = [];       // últimas posições (px, py) para o "percurso do robô"
 
 // Calibração: modo de clique alternativo que marca os 4 cantos da arena
@@ -200,6 +220,14 @@ function handleJson(msg) {
         initialPose = { x: msg.x, y: msg.y };
         initialValue.textContent = formatMeters(initialPose);
       }
+      break;
+    case 'robots':
+      multiUser = true;
+      robots = Array.isArray(msg.robots) ? msg.robots.slice(0, MAX_ROBOTS) : [];
+      pendingRobotId = null;
+      myRobotId = robots.find((r) => r.status === 'mine')?.id ?? null;
+      renderRobotSelect();
+      updateRobotView();
       break;
     case 'status':
       setBadge(homogBadge, msg.homography,
@@ -536,6 +564,133 @@ function stopTracking() {
   exitLocateMode();
   addLog('Rastreamento parado.');
 }
+
+// ------------------------------------------------------------------ //
+// Escolha de robô (multiusuário)
+//
+// Protocolo:
+//   servidor -> cliente  {type: 'robots', robots: [{id, name, status, bluetooth, marker}]}
+//                        (reenviado a cada mudança; status 'mine' = reservado para esta sessão)
+//   cliente -> servidor  {type: 'select_robot', id} | {type: 'release_robot'} | {type: 'release_all'}
+// ------------------------------------------------------------------ //
+
+function robotColor(id) {
+  return ROBOT_COLORS[((id % ROBOT_COLORS.length) + ROBOT_COLORS.length) % ROBOT_COLORS.length];
+}
+
+function makeEl(tag, className, text) {
+  const el = document.createElement(tag);
+  if (className) el.className = className;
+  if (text !== undefined) el.textContent = text;
+  return el;
+}
+
+function makeStatusChip(robot) {
+  if (robot.status === 'mine') return makeEl('span', 'success', 'Seu robô');
+  if (robot.status === 'busy') return makeEl('span', 'error', 'Ocupado');
+  if (!robot.bluetooth) return makeEl('span', 'neutral', 'Offline');
+  return makeEl('span', 'success', 'Livre');
+}
+
+function makeCheck(ok, okText, failText) {
+  return makeEl('li', ok ? 'ok' : 'fail', `${ok ? '✓' : '✕'} ${ok ? okText : failText}`);
+}
+
+function buildRobotCard(robot) {
+  const mine = robot.status === 'mine';
+  const busy = robot.status === 'busy';
+  const offline = !robot.bluetooth && !mine;
+
+  const card = makeEl('article', 'robot-card');
+  if (mine) card.classList.add('mine');
+  if (busy) card.classList.add('busy');
+  if (offline) card.classList.add('offline');
+  card.style.setProperty('--robot-color', robotColor(robot.id));
+
+  const head = makeEl('div', 'robot-card-head');
+  head.append(makeEl('span', 'robot-dot'), makeEl('h2', '', robot.name), makeEl('span', 'robot-id', `ID ${robot.id}`));
+
+  const chips = makeEl('div', 'badges');
+  chips.append(makeStatusChip(robot));
+
+  const checks = makeEl('ul', 'robot-checks');
+  checks.append(
+    makeCheck(robot.bluetooth, 'Bluetooth conectado', 'Bluetooth desconectado'),
+    makeCheck(robot.marker, 'Marcador visível na câmera', 'Marcador não visto'),
+  );
+
+  const actions = makeEl('div', 'robot-actions');
+  const button = makeEl('button', 'buttonPrimary');
+  button.type = 'button';
+
+  if (mine) {
+    button.textContent = 'Em uso por você';
+    button.disabled = true;
+  } else {
+    button.textContent = busy ? 'Em uso' : (offline ? 'Indisponível' : 'Conectar');
+    button.disabled = busy || offline || pendingRobotId !== null;
+    button.addEventListener('click', () => selectRobot(robot));
+  }
+  actions.append(button);
+
+  card.append(head, chips, checks, actions);
+  return card;
+}
+
+function renderRobotSelect() {
+  robotGrid.replaceChildren(...robots.map(buildRobotCard));
+  robotEmpty.classList.toggle('hidden', robots.length > 0);
+
+  const free = robots.filter((r) => r.status === 'free' && r.bluetooth).length;
+  robotCount.textContent = `${robots.length} de ${MAX_ROBOTS} robôs · ${free} livres`;
+
+  const mine = robots.find((r) => r.id === myRobotId);
+  if (mine) {
+    robotBarName.textContent = mine.name;
+    robotBar.style.setProperty('--robot-color', robotColor(mine.id));
+  }
+}
+
+// Mostra a tela de escolha enquanto o usuário não tem robô e a interface de
+// controle quando tem.
+function updateRobotView() {
+  const gate = multiUser && myRobotId === null;
+  robotSelect.classList.toggle('hidden', !gate);
+  controlMain.classList.toggle('hidden', gate);
+  robotBar.classList.toggle('hidden', !(multiUser && myRobotId !== null));
+}
+
+function selectRobot(robot) {
+  pendingRobotId = robot.id;
+  renderRobotSelect();
+  send({ type: 'select_robot', id: robot.id });
+  addLog(`Conectando ao robô ${robot.name}…`);
+}
+
+changeRobotBtn.addEventListener('click', () => {
+  send({ type: 'release_robot' });
+  addLog('Robô liberado.');
+});
+
+// "Tornar todos os robôs livres": qualquer usuário pode usar (fase de testes).
+// Pede uma segunda confirmação para evitar clique acidental.
+function resetReleaseAllButton() {
+  clearTimeout(releaseAllTimer);
+  releaseAllBtn.classList.remove('confirming');
+  releaseAllBtn.textContent = 'Tornar todos os robôs livres';
+}
+
+releaseAllBtn.addEventListener('click', () => {
+  if (!releaseAllBtn.classList.contains('confirming')) {
+    releaseAllBtn.classList.add('confirming');
+    releaseAllBtn.textContent = 'Confirmar: desconectar todos?';
+    releaseAllTimer = setTimeout(resetReleaseAllButton, RELEASE_CONFIRM_MS);
+    return;
+  }
+  resetReleaseAllButton();
+  send({ type: 'release_all' });
+  addLog('Todos os robôs foram liberados.');
+});
 
 // ------------------------------------------------------------------ //
 // Util
