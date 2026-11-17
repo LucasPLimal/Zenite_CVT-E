@@ -212,3 +212,25 @@ Para execução completa:
 ```bash
 ros2 launch zenite_launch zenite_launch.py
 ```
+
+## Modo multiusuário (interface web)
+
+Vários usuários, cada um com um robô (até 8), pela interface web, sem `rfcomm` manual:
+
+```bash
+ros2 launch zenite_launch zenite_multiusuario_launch.py video_index:=0
+```
+
+Acesse `http://<ip do Raspberry>:8000` de outro dispositivo, ligue o robô e use **Procurar
+robôs** na tela de escolha. Detalhes em `zenite_ws/src/bluetooth_node/README.md` e
+`zenite_ws/src/web_interface/README.md`.
+
+Para cada robô:
+- Grave o `FirmwareEsp32.ino` com um `ROBOT_NAME` único (zenitinho, parnadiloJR, Jerimum…).
+- Cadastre o robô em `zenite_ws/src/bluetooth_node/config/robots.yaml` (`id` = ID do
+  marcador ArUco).
+
+O fluxo antigo (um robô, `rfcomm bind` e `zenite_launch.py`) continua valendo para quem não
+usa a interface web. Nele o `transmission_node` aceita `-p serial_port:=/dev/rfcomm0` e
+`-p robot_id:=0`, e o `interface_node` precisa de remapeamento de tópico para mover o robô
+(`/desired_position` → `/robot_0/desired_position`).
