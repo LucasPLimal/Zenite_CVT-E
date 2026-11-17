@@ -5,7 +5,8 @@ const canvas = document.getElementById('video-canvas');
 const ctx = canvas.getContext('2d');
 const noVideo = document.getElementById('no-video');
 const navButtons = Array.from(document.querySelectorAll('.navRow button[data-target]'));
-const tabSections = Array.from(document.querySelectorAll('main > section > div[id]'));
+// Só as abas (.tab-panel): o #robot-bar também é uma div com id dentro de uma section.
+const tabSections = Array.from(document.querySelectorAll('main > section > div.tab-panel[id]'));
 const connBadge = document.getElementById('conn-badge');
 const camBadge = document.getElementById('cam-badge');
 const homogBadge = document.getElementById('homog-badge');
