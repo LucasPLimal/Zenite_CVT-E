@@ -1,0 +1,14 @@
+# Cadastro dos robôs (no máximo 8).
+#
+#   id    -> número do robô; é o mesmo ID do marcador ArUco colado nele.
+#            (Por enquanto 0, 1 e 2; troque pelos IDs reais dos marcadores.)
+#   name  -> nome Bluetooth do ESP32 (o ROBOT_NAME do firmware). É também o
+#            nome que o robô envia na apresentação "ZENIT,<nome>" ao conectar.
+#   label -> nome mostrado na interface web.
+#
+# O endereço MAC não é preciso aqui: o servidor descobre sozinho e guarda em
+# ~/.zenite/bluetooth_known.json depois do primeiro pareamento.
+robots:
+  - {id: 0, name: zenitinho,   label: Zenitinho}
+  - {id: 1, name: parnadiloJR, label: Parnadilo JR}
+  - {id: 2, name: Jerimum,     label: Jerimum}

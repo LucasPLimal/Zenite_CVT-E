@@ -1,0 +1,21 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>bluetooth_node</name>
+  <version>0.1.0</version>
+  <description>Gerenciador de Bluetooth dos robôs: procura, pareia e conecta os ESP32 (RFCOMM) e transmite as velocidades das rodas</description>
+
+  <maintainer email="voce@exemplo.com">Danilo</maintainer>
+  <license>Apache-2.0</license>
+
+  <depend>rclpy</depend>
+  <depend>geometry_msgs</depend>
+  <depend>std_msgs</depend>
+
+  <exec_depend>python3-yaml</exec_depend>
+
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>
