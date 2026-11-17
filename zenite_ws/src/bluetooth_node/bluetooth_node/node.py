@@ -24,6 +24,7 @@ import time
 import rclpy
 from ament_index_python.packages import get_package_share_directory
 from geometry_msgs.msg import Vector3
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import DurabilityPolicy, QoSProfile, ReliabilityPolicy
 from std_msgs.msg import Bool, String
@@ -123,11 +124,14 @@ def main(args=None):
     node = BluetoothNode()
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
-        node.shutdown()
-        node.destroy_node()
+        node.shutdown()  # manda parada a todos os robôs antes de sair
+        try:
+            node.destroy_node()
+        except Exception:
+            pass
         rclpy.try_shutdown()
 
 
