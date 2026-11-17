@@ -23,6 +23,18 @@
       Nenhum robô disponível. Aguardando os robôs conectarem ao Bluetooth do servidor…
     </p>
 
+    <div class="bt-panel" aria-labelledby="bt-title">
+      <div class="bt-panel-header">
+        <div>
+          <h2 id="bt-title">Conectar um robô</h2>
+          <p>Ligue o robô e procure os dispositivos Bluetooth próximos. Só dispositivos que se apresentarem como robô cadastrado são aceitos. A busca pode causar travamentos breves nos robôs que já estão em uso.</p>
+        </div>
+        <button type="button" id="bt-scan-btn" class="buttonPrimary">Procurar robôs</button>
+      </div>
+      <ul id="bt-devices" class="bt-devices" aria-live="polite"></ul>
+      <p id="bt-hint" class="bt-hint hidden"></p>
+    </div>
+
     <div class="robot-select-footer">
       <span id="robot-count" class="robot-count">0 robôs · 0 livres</span>
       <button type="button" id="release-all-btn" class="buttonSecondary">Tornar todos os robôs livres</button>

@@ -25,6 +25,9 @@ const robotBar = document.getElementById('robot-bar');
 const robotBarName = document.getElementById('robot-bar-name');
 const changeRobotBtn = document.getElementById('change-robot-btn');
 const controlMain = document.getElementById('control-main');
+const btScanBtn = document.getElementById('bt-scan-btn');
+const btDevicesEl = document.getElementById('bt-devices');
+const btHint = document.getElementById('bt-hint');
 const calibrateToggle = document.getElementById('calibrate-toggle');
 const switchPont = document.getElementById('switchPont');
 const switchLoc = document.getElementById('switchLoc');
@@ -54,6 +57,9 @@ let robots = [];          // [{id, name, status: 'free'|'busy'|'mine', bluetooth
 let myRobotId = null;     // robô reservado para esta sessão
 let pendingRobotId = null; // clique em "Conectar" aguardando a resposta do servidor
 let releaseAllTimer = null;
+let btScanning = false;   // o servidor está procurando dispositivos Bluetooth
+let btDevices = [];       // [{mac, name, likely_robot, connected}]
+let btConnectingMac = null; // dispositivo com tentativa de conexão em andamento
 let poseTrail = [];       // últimas posições (px, py) para o "percurso do robô"
 
 // Calibração: modo de clique alternativo que marca os 4 cantos da arena
@@ -167,12 +173,35 @@ document.addEventListener('DOMContentLoaded', setupSectionTabs);
 // WebSocket
 // ------------------------------------------------------------------ //
 
+// Identificador deste navegador. O servidor usa o token para manter o robô
+// reservado por alguns segundos se a conexão cair, e devolvê-lo na volta.
+function getToken() {
+  try {
+    let token = localStorage.getItem('zenite-token');
+    if (!token) {
+      token = (crypto.randomUUID ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem('zenite-token', token);
+    }
+    return token;
+  } catch (e) {
+    // localStorage indisponível (modo privado, etc.): token só desta aba.
+    if (!window.__zeniteToken) {
+      window.__zeniteToken = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    }
+    return window.__zeniteToken;
+  }
+}
+
 function connect() {
   const proto = location.protocol === 'https:' ? 'wss' : 'ws';
   ws = new WebSocket(`${proto}://${location.host}/ws`);
   ws.binaryType = 'blob';
 
-  ws.onopen = () => setBadge(connBadge, true, 'Conectado');
+  ws.onopen = () => {
+    setBadge(connBadge, true, 'Conectado');
+    send({ type: 'hello', token: getToken() });
+  };
 
   ws.onclose = () => {
     setBadge(connBadge, false, 'Desconectado');
@@ -198,12 +227,31 @@ function formatMeters(p) {
   return `(${p.x.toFixed(2)}, ${p.y.toFixed(2)}) m`;
 }
 
+// Pose do robô: posição em metros e, se o servidor enviar, o ângulo (theta).
+function formatPose(p) {
+  const base = formatMeters(p);
+  if (typeof p.theta !== 'number') return base;
+  return `${base} · ${(p.theta * 180 / Math.PI).toFixed(0)}°`;
+}
+
+// Ao trocar de robô a telemetria anterior deixa de valer.
+function resetTelemetry() {
+  currentPose = null;
+  initialPose = null;
+  currentGoal = null;
+  lastPoseAt = 0;
+  poseTrail = [];
+  [poseValue, initialValue, goalValue, lastGoalValue].forEach((el) => {
+    el.textContent = '—';
+  });
+}
+
 function handleJson(msg) {
   switch (msg.type) {
     case 'pose':
       currentPose = msg;
       lastPoseAt = Date.now();
-      poseValue.textContent = formatMeters(msg);
+      poseValue.textContent = formatPose(msg);
       if (msg.px !== undefined) {
         poseTrail.push({ x: msg.px, y: msg.py });
         if (poseTrail.length > TRAIL_MAX) poseTrail.shift();
@@ -217,9 +265,29 @@ function handleJson(msg) {
       multiUser = true;
       robots = Array.isArray(msg.robots) ? msg.robots.slice(0, MAX_ROBOTS) : [];
       pendingRobotId = null;
-      myRobotId = robots.find((r) => r.status === 'mine')?.id ?? null;
+      {
+        const previous = myRobotId;
+        myRobotId = robots.find((r) => r.status === 'mine')?.id ?? null;
+        if (previous !== myRobotId) resetTelemetry();
+      }
       renderRobotSelect();
       updateRobotView();
+      break;
+    case 'bluetooth':
+      {
+        const wasScanning = btScanning;
+        btScanning = !!msg.scanning;
+        btDevices = Array.isArray(msg.devices) ? msg.devices : [];
+        if (wasScanning && !btScanning) {
+          showBtHint(btDevices.length
+            ? 'Escolha na lista o dispositivo do seu robô.'
+            : 'Nenhum dispositivo encontrado. Confira se o robô está ligado.');
+        }
+      }
+      renderBluetooth();
+      break;
+    case 'bt_event':
+      handleBluetoothEvent(msg);
       break;
     case 'status':
       setBadge(homogBadge, msg.homography,
@@ -539,6 +607,78 @@ function renderRobotSelect() {
     robotBarName.textContent = mine.name;
     robotBar.style.setProperty('--robot-color', robotColor(mine.id));
   }
+}
+
+// ------------------------------------------------------------------ //
+// Conexão Bluetooth de robôs novos (painel da tela de escolha)
+// ------------------------------------------------------------------ //
+
+function showBtHint(text, isError = false) {
+  btHint.textContent = text;
+  btHint.classList.toggle('hidden', !text);
+  btHint.classList.toggle('error', isError);
+}
+
+function renderBluetooth() {
+  btScanBtn.disabled = btScanning;
+  btScanBtn.textContent = btScanning ? 'Procurando…' : 'Procurar robôs';
+
+  const items = btDevices.map((d) => {
+    const li = makeEl('li', 'bt-device');
+    const info = makeEl('div', 'bt-device-info');
+    info.append(
+      makeEl('strong', null, d.name || 'Sem nome'),
+      makeEl('span', 'bt-mac', d.mac),
+    );
+    if (d.likely_robot) info.append(makeEl('span', 'bt-tag', 'Provável robô'));
+
+    const btn = makeEl('button', 'buttonSecondary');
+    btn.type = 'button';
+    if (d.connected) {
+      btn.textContent = 'Conectado';
+      btn.disabled = true;
+    } else if (btConnectingMac === d.mac) {
+      btn.textContent = 'Conectando…';
+      btn.disabled = true;
+    } else {
+      btn.textContent = 'Conectar';
+      btn.disabled = btConnectingMac !== null || btScanning;
+      btn.addEventListener('click', () => connectDevice(d));
+    }
+    li.append(info, btn);
+    return li;
+  });
+  btDevicesEl.replaceChildren(...items);
+
+  if (!btScanning && btDevices.length === 0 && btHint.classList.contains('hidden')) {
+    showBtHint('Nenhum dispositivo listado. Ligue o robô e clique em "Procurar robôs".');
+  }
+}
+
+function connectDevice(device) {
+  btConnectingMac = device.mac;
+  showBtHint(`Conectando a ${device.name || device.mac}… isso pode levar alguns segundos.`);
+  renderBluetooth();
+  send({ type: 'bt_connect', mac: device.mac });
+}
+
+btScanBtn.addEventListener('click', () => {
+  btScanning = true;
+  showBtHint('Procurando dispositivos Bluetooth próximos…');
+  renderBluetooth();
+  send({ type: 'bt_scan' });
+});
+
+// Avisos do servidor para todos os usuários: robô conectado/desconectado e
+// motivos de recusa (dispositivo que não é robô, robô fora do cadastro etc.).
+function handleBluetoothEvent(msg) {
+  const failed = ['connect_failed', 'not_a_robot', 'not_registered', 'scan_error']
+    .includes(msg.event);
+  addLog(msg.message || msg.event, failed);
+  if (msg.mac && msg.mac === btConnectingMac) btConnectingMac = null;
+  if (msg.event === 'robot_connected') btConnectingMac = null;
+  showBtHint(msg.message || '', failed);
+  renderBluetooth();
 }
 
 // Mostra a tela de escolha enquanto o usuário não tem robô e a interface de

@@ -954,6 +954,99 @@ main.hidden,
   }
 }
 
+/* Painel de conexão Bluetooth de robôs novos (tela de escolha de robô) */
+.bt-panel {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 4);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-mauve-200);
+}
+
+.bt-panel-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+}
+
+.bt-panel-header>div {
+  flex: 1 1 18rem;
+}
+
+.bt-panel-header h2 {
+  font-size: var(--text-base);
+  font-weight: var(--font-weight-semibold);
+}
+
+.bt-panel-header p,
+.bt-mac,
+.bt-hint {
+  font-size: var(--text-sm);
+  color: var(--color-mauve-700);
+}
+
+.bt-devices {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--spacing) * 2);
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.bt-device {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--spacing) * 3);
+  padding: calc(var(--spacing) * 2) calc(var(--spacing) * 3);
+  border: 1px solid var(--color-mauve-400);
+  border-radius: var(--radius-lg);
+}
+
+.bt-device-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: calc(var(--spacing) * 2);
+}
+
+.bt-tag {
+  padding: 0 calc(var(--spacing) * 2);
+  border-radius: var(--radius-lg);
+  background-color: var(--color-rose-600);
+  color: var(--color-white);
+  font-size: var(--text-xs);
+}
+
+.bt-hint.hidden {
+  display: none;
+}
+
+.bt-hint.error {
+  color: var(--color-red-400);
+}
+
+@media (prefers-color-scheme: dark) {
+  .bt-panel {
+    background-color: var(--color-mauve-800);
+  }
+
+  .bt-panel-header p,
+  .bt-mac,
+  .bt-hint {
+    color: var(--color-mauve-300);
+  }
+
+  .bt-device {
+    border-color: var(--color-mauve-600);
+  }
+}
+
 @property --tw-duration {
   syntax: "*";
   inherits: false;
