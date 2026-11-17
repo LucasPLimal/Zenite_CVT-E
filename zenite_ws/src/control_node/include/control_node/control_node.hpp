@@ -24,6 +24,10 @@
 // publicada pelo LocalizationNode em /robot_<id>/current_pose.
 #include <std_msgs/msg/float64_multi_array.hpp>
 
+// Alteração feita por Danilo: mensagem Bool usada no tópico /robot_<id>/stop,
+// que manda o robô parar (ex.: usuário desconectou da interface web).
+#include <std_msgs/msg/bool.hpp>
+
 // Permite usar literais de tempo como "10ms", "1s", etc.
 using namespace std::chrono_literals;
 
@@ -65,17 +69,27 @@ public:
     is_moving(false)
   {
 
-    // Cria um publisher para enviar as velocidades calculadas
-    // das rodas (direita/esquerda) para o restante do sistema.
-    publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>("wheel_velocities", 10);
-
-
-
     // Parâmetro com o ID do robô controlado por este nó (o mesmo ID do
     // marcador ArUco). Ele define de qual tópico a pose é lida.
     const int robot_id = this->declare_parameter<int>("robot_id", 0);
-    const std::string pose_topic =
-      "/robot_" + std::to_string(robot_id) + "/current_pose";
+    const std::string robot_prefix = "/robot_" + std::to_string(robot_id);
+    const std::string pose_topic = robot_prefix + "/current_pose";
+
+    // Alteração feita por Danilo: os dois ajustes de teste que estavam fixos
+    // no código (inverter o sentido da curva e a velocidade mínima das rodas)
+    // viraram parâmetros, mantendo os mesmos valores padrão de antes. Assim
+    // cada robô pode ser ajustado pelo launch sem recompilar.
+    invert_turn_ = this->declare_parameter<bool>("invert_turn", true);
+    min_wheel_speed_ = static_cast<float>(
+      this->declare_parameter<double>("min_wheel_speed", 12.0));
+
+    // Cria um publisher para enviar as velocidades calculadas
+    // das rodas (direita/esquerda) para o restante do sistema.
+    //
+    // Alteração feita por Danilo: o tópico agora é por robô
+    // (/robot_<id>/wheel_velocities), para vários robôs poderem rodar juntos.
+    publisher_ = this->create_publisher<geometry_msgs::msg::Vector3>(
+      robot_prefix + "/wheel_velocities", 10);
 
     // Cria um subscriber para receber a pose atual do robô
     // ([x, y, theta]), enviada pelo LocalizationNode.
@@ -87,9 +101,19 @@ public:
 
     // Cria um subscriber para receber a posição desejada (alvo)
     // que o robô deve alcançar.
+    //
+    // Alteração feita por Danilo: o alvo agora é por robô
+    // (/robot_<id>/desired_position) em vez do tópico global /desired_position,
+    // para que o clique de um usuário não mova os robôs dos outros.
     desired_pos_sub_ = this->create_subscription<geometry_msgs::msg::Point>(
-      "/desired_position", 10,
+      robot_prefix + "/desired_position", 10,
       std::bind(&ControlNode::desiredPosCallback, this, std::placeholders::_1));
+
+    // Alteração feita por Danilo: tópico de parada do robô. Qualquer mensagem
+    // recebida em /robot_<id>/stop cancela o alvo atual e para o robô.
+    stop_sub_ = this->create_subscription<std_msgs::msg::Bool>(
+      robot_prefix + "/stop", 10,
+      std::bind(&ControlNode::stopCallback, this, std::placeholders::_1));
 
 
 
@@ -165,6 +189,26 @@ private:
     is_moving = true;
 
     RCLCPP_INFO(this->get_logger(), "Nova referência: (%.3f, %.3f)", x_ref, y_ref);
+  }
+
+
+
+  // ======================================================
+  // CALLBACK DE PARADA
+  // Alteração feita por Danilo: executado quando chega uma mensagem em
+  // /robot_<id>/stop. Cancela o alvo, zera os integradores do controle e
+  // publica velocidade zero, para o robô não continuar indo até o alvo
+  // antigo (ex.: usuário desconectou) nem herdar esse alvo no próximo uso.
+  // ======================================================
+  void stopCallback(const std_msgs::msg::Bool::SharedPtr /*msg*/)
+  {
+    is_moving = false;
+    has_desired_pos = false;
+    i_linear = 0.0f;
+    i_angular = 0.0f;
+
+    stopRobot();
+    RCLCPP_INFO(this->get_logger(), "Parada solicitada: alvo cancelado");
   }
 
 
@@ -281,7 +325,9 @@ private:
     // **CINEMÁTICA DIFERENCIAL**
     // v = velocidade linear, ω = velocidade angular
     float v = u_linear;
-    float omega = -u_angular;  // TESTE: inverte o sentido da curva
+    // Alteração feita por Danilo: a inversão (antes fixa, marcada como TESTE)
+    // agora depende do parâmetro invert_turn (padrão true, igual ao antes).
+    float omega = invert_turn_ ? -u_angular : u_angular;
 
     // Converte as velocidades linear e angular do robô em
     // velocidades individuais das rodas (direita e esquerda),
@@ -293,13 +339,16 @@ private:
 
     // ------------------------------------------------------
     // TESTE (REMOVER QUANDO TROCAR AS PILHAS):
-    // velocidade mínima (em módulo) = 0xC = 12.
+    // velocidade mínima (em módulo) das rodas.
     // Escala as duas rodas pelo mesmo fator, então a proporção
     // entre elas (e portanto o direcionamento) continua igual.
+    //
+    // Alteração feita por Danilo: o valor (antes fixo em 0xC = 12) agora vem
+    // do parâmetro min_wheel_speed (padrão 12.0). Use 0 para desligar.
     // ------------------------------------------------------
-    constexpr float MIN_WHEEL_SPEED = 0xC;  // 12
+    const float MIN_WHEEL_SPEED = min_wheel_speed_;
     float max_abs = std::max(std::fabs(v_direito), std::fabs(v_esquerdo));
-    if (max_abs > 0.0f && max_abs < MIN_WHEEL_SPEED) {
+    if (MIN_WHEEL_SPEED > 0.0f && max_abs > 0.0f && max_abs < MIN_WHEEL_SPEED) {
       float scale = MIN_WHEEL_SPEED / max_abs;
       v_direito  *= scale;
       v_esquerdo *= scale;
@@ -393,6 +442,12 @@ private:
 
 
 
+  // Alteração feita por Danilo: ajustes lidos de parâmetros (ver construtor).
+  bool invert_turn_ = true;          // Inverte o sentido da curva
+  float min_wheel_speed_ = 12.0f;    // Velocidade mínima das rodas (0 = desligado)
+
+
+
   // Flags de controle de fluxo do nó.
   bool has_current_pos;   // Indica se já foi recebida a posição atual
   bool has_desired_pos;   // Indica se já foi recebida a posição desejada
@@ -405,4 +460,7 @@ private:
   rclcpp::Publisher<geometry_msgs::msg::Vector3>::SharedPtr publisher_;
   rclcpp::Subscription<std_msgs::msg::Float64MultiArray>::SharedPtr current_pos_sub_;
   rclcpp::Subscription<geometry_msgs::msg::Point>::SharedPtr desired_pos_sub_;
+
+  // Alteração feita por Danilo: subscriber do tópico de parada.
+  rclcpp::Subscription<std_msgs::msg::Bool>::SharedPtr stop_sub_;
 };

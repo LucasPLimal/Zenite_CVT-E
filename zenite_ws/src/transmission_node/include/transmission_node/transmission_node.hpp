@@ -32,10 +32,22 @@ public:
     serial_(io_),                // Associa a porta serial ao io_service
     vmax_(40.0f)                 // Velocidade máxima considerada pelo sistema
   {
+    // Alteração feita por Danilo: este nó agora controla um robô só, escolhido
+    // pelos parâmetros robot_id (o mesmo ID do ArUco) e serial_port (porta
+    // rfcomm do robô). Os padrões mantêm o comportamento antigo (robô 0 em
+    // /dev/rfcomm0). Para vários robôs, rode uma instância por robô.
+    // Obs.: com o bluetooth_node (conexão automática) este nó não é usado.
+    const int robot_id = this->declare_parameter<int>("robot_id", 0);
+    const std::string serial_port =
+      this->declare_parameter<std::string>("serial_port", "/dev/rfcomm0");
+    const std::string vel_topic =
+      "/robot_" + std::to_string(robot_id) + "/wheel_velocities";
+
     try {
 
       // Abre a porta serial Bluetooth criada pelo rfcomm
-      serial_.open("/dev/rfcomm0");
+      // (Alteração feita por Danilo: a porta vem do parâmetro serial_port.)
+      serial_.open(serial_port);
 
       // Código utilizado para criar essa porta:
       // sudo rfcomm bind /dev/rfcomm0 00:4B:12:3C:74:CE (Zenitinho)
@@ -55,7 +67,8 @@ public:
       serial_.set_option(serial_port_base::stop_bits(serial_port_base::stop_bits::one));
 
       // Informa que tudo ocorreu corretamente
-      RCLCPP_INFO(this->get_logger(), "Porta serial /dev/rfcomm0 aberta com sucesso!");
+      RCLCPP_INFO(this->get_logger(), "Porta serial %s aberta com sucesso!",
+                  serial_port.c_str());
     }
 
     // Caso ocorra algum erro ao abrir/configurar a porta
@@ -74,7 +87,9 @@ public:
     // Cria subscriber para receber velocidades das rodas
     subscriber_ =
       this->create_subscription<geometry_msgs::msg::Vector3>(
-        "wheel_velocities",       // tópico publicado pelo Control Node
+        vel_topic,                // tópico publicado pelo Control Node
+                                  // (Alteração feita por Danilo: agora por robô,
+                                  //  /robot_<id>/wheel_velocities)
         10,                       // tamanho da fila
         std::bind(&TransmissionNode::vel_callback,
                   this,
