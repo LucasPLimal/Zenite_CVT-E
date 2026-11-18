@@ -32,6 +32,10 @@ public:
     // Carrega a homografia e pontos de YAML
     void loadFromYaml(const std::string& path);
 
+    // Alteração feita por Danilo: indica se a homografia já foi carregada ou
+    // calculada. Sem ela, pixelToMeter() lança exceção do OpenCV.
+    bool ready() const { return !H_.empty(); }
+
 private:
     std::vector<cv::Point2f> pixel_points_;
     std::vector<cv::Point2f> real_points_;
