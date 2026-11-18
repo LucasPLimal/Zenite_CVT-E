@@ -18,6 +18,20 @@ int main(int argc, char** argv)
     // Cria uma instância do nó LocalizationNode
     auto node = std::make_shared<LocalizationNode>();
 
+    // Alteração feita por Danilo: a janela do OpenCV agora é opcional.
+    // Com show_window:=false (padrão) o nó roda sem display, como no Raspberry Pi
+    // via SSH, em que cv::imshow derrubava o processo (Qt "xcb" não encontrado).
+    // Para ver a janela num computador com tela: show_window:=true.
+    node->declare_parameter<bool>("show_window", false);
+    const bool mostrar_janela = node->get_parameter("show_window").as_bool();
+
+    // Alteração feita por Danilo: o nó só lia a homografia ao iniciar, então uma
+    // calibração feita depois (pela interface web) nunca era vista. Agora, enquanto
+    // não houver homografia, ele tenta recarregar o YAML a cada 2 s.
+    const std::string caminho_yaml =
+        node->get_parameter("scale_yaml_path").as_string();
+    auto ultima_tentativa = std::chrono::steady_clock::now();
+
     // Define a taxa de execução do loop principal em 30 Hz
     rclcpp::Rate rate(30);
 
@@ -66,6 +80,15 @@ int main(int argc, char** argv)
             continue;
         }
 
+        // Alteração feita por Danilo: recarrega a homografia se ainda não houver.
+        if (!node->converter_.ready()) {
+            const auto agora = std::chrono::steady_clock::now();
+            if (agora - ultima_tentativa > std::chrono::seconds(2)) {
+                ultima_tentativa = agora;
+                node->converter_.loadFromYaml(caminho_yaml);
+            }
+        }
+
         // Procura os marcadores no frame original (sem desenhos)
         // e mede quanto tempo a detecção levou
         cv::TickMeter cronometro;
@@ -111,6 +134,17 @@ int main(int argc, char** argv)
                 // Desenha a trajetória percorrida
                 for (size_t i = 1; i < traj.size(); ++i)
                     cv::line(tela, traj[i - 1], traj[i], cor, 2);
+
+                // Alteração feita por Danilo: sem homografia não dá para converter
+                // para metros (pixelToMeter lançaria exceção e derrubaria o nó).
+                // O marcador continua desenhado, mas a pose não é publicada.
+                if (!node->converter_.ready()) {
+                    RCLCPP_WARN_THROTTLE(
+                        node->get_logger(), *node->get_clock(), 2000,
+                        "Marcador %d visto, mas sem calibração: a pose não será "
+                        "publicada. Calibre pela interface web.", d.id);
+                    continue;
+                }
 
                 // Converte centro e frente de pixels para metros
                 // utilizando a homografia calculada no CalibrationNode
@@ -161,13 +195,17 @@ int main(int argc, char** argv)
                         2);
         }
 
-        // Exibe a imagem com todos os desenhos feitos
-        cv::imshow("Rastreamento dos Carrinhos", tela);
+        // Alteração feita por Danilo: exibe a janela só se show_window for true
+        if (mostrar_janela) {
 
-        // Aguarda aproximadamente 30 ms
-        // Se o usuário pressionar ESC (27), encerra o programa
-        if (cv::waitKey(30) == 27)
-            break;
+            // Exibe a imagem com todos os desenhos feitos
+            cv::imshow("Rastreamento dos Carrinhos", tela);
+
+            // Aguarda aproximadamente 30 ms
+            // Se o usuário pressionar ESC (27), encerra o programa
+            if (cv::waitKey(30) == 27)
+                break;
+        }
 
         // Aguarda até completar os 30 Hz definidos anteriormente
         rate.sleep();
